@@ -1165,8 +1165,8 @@
             
             new QRCode(tempDiv, {
                 text: qrUrl,
-                width: 160,
-                height: 160,
+                width: 200,
+                height: 200,
                 colorDark: "#000000",
                 colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.M
@@ -1178,48 +1178,47 @@
             const finalCanvas = document.createElement('canvas');
             const ctx = finalCanvas.getContext('2d');
             
-            const qrSize = 160;
-            const padding = 15;
-            const gap = 10;
-            const textWidth = 280;
-            finalCanvas.width = (qrSize * 2) + textWidth + (padding * 4) + gap;
-            finalCanvas.height = qrSize + (padding * 2);
+            // Dimensioni: QR grande a sinistra, testo al centro, QR piccolo in basso a destra
+            const qrLargeSize = 200;
+            const qrSmallSize = 80;
+            const padding = 20;
+            const textWidth = 300;
+            finalCanvas.width = qrLargeSize + textWidth + (padding * 3);
+            finalCanvas.height = qrLargeSize + (padding * 2);
             
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
             
-            // QR semplice a sinistra
-            ctx.drawImage(simpleCanvas, padding, padding, qrSize, qrSize);
+            // QR URL grande a sinistra
+            ctx.drawImage(urlCanvas, padding, padding, qrLargeSize, qrLargeSize);
             ctx.strokeStyle = '#e0e0e0';
             ctx.lineWidth = 1;
-            ctx.strokeRect(padding, padding, qrSize, qrSize);
-            
-            // Label sotto QR semplice
-            ctx.fillStyle = '#9CA3AF';
-            ctx.font = '10px Arial, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('QR Semplice', padding + qrSize/2, finalCanvas.height - 5);
-            
-            // QR URL al centro
-            ctx.drawImage(urlCanvas, padding + qrSize + gap, padding, qrSize, qrSize);
-            ctx.strokeStyle = '#e0e0e0';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(padding + qrSize + gap, padding, qrSize, qrSize);
+            ctx.strokeRect(padding, padding, qrLargeSize, qrLargeSize);
             
             // Label sotto QR URL
-            ctx.fillStyle = '#9CA3AF';
-            ctx.font = '10px Arial, sans-serif';
+            ctx.fillStyle = '#4F46E5';
+            ctx.font = 'bold 12px Arial, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('QR URL', padding + qrSize + gap + qrSize/2, finalCanvas.height - 5);
+            ctx.fillText('🌐 QR Completo', padding + qrLargeSize/2, padding + qrLargeSize + 15);
             
             // Testo a destra
-            const textStartX = (qrSize * 2) + (padding * 2) + gap + 10;
-            drawBoxText(ctx, textStartX, finalCanvas.height / 2, textWidth - 20);
+            const textStartX = qrLargeSize + (padding * 2);
+            drawBoxText(ctx, textStartX, finalCanvas.height / 2, textWidth - qrSmallSize - 15);
             
-            ctx.font = '10px Arial, sans-serif';
-            ctx.fillStyle = '#D1D5DB';
-            ctx.textAlign = 'right';
-            ctx.fillText('📦', finalCanvas.width - padding, finalCanvas.height - 5);
+            // QR semplice piccolo in basso a destra
+            const qrSmallX = finalCanvas.width - qrSmallSize - padding;
+            const qrSmallY = finalCanvas.height - qrSmallSize - padding;
+            
+            ctx.drawImage(simpleCanvas, qrSmallX, qrSmallY, qrSmallSize, qrSmallSize);
+            ctx.strokeStyle = '#D1D5DB';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(qrSmallX, qrSmallY, qrSmallSize, qrSmallSize);
+            
+            // Label per QR piccolo (sopra)
+            ctx.fillStyle = '#9CA3AF';
+            ctx.font = '9px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('ID Backup', qrSmallX + qrSmallSize/2, qrSmallY - 4);
             
             document.body.removeChild(tempDiv);
             
