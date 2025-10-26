@@ -787,17 +787,41 @@
 
         // Mostra scanner QR per selezionare box
         function showQRScanner() {
-            // Prova prima con lo scanner in tempo reale
-            const tempScanner = new Html5Qrcode("temp-qr-reader");
-            const tempDiv = document.createElement('div');
-            tempDiv.id = 'temp-qr-reader';
-            tempDiv.style.display = 'none';
-            document.body.appendChild(tempDiv);
+            // Crea un mini scanner temporaneo
+            const modalScanner = document.createElement('div');
+            modalScanner.id = 'modal-scanner';
+            modalScanner.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 20px;';
+            
+            const scannerContainer = document.createElement('div');
+            scannerContainer.id = 'temp-qr-reader';
+            scannerContainer.style.cssText = 'width: 100%; max-width: 500px; border-radius: 12px; overflow: hidden;';
+            
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Chiudi Scanner';
+            closeBtn.className = 'btn btn-secondary';
+            closeBtn.style.cssText = 'margin-top: 20px; max-width: 300px;';
+            closeBtn.onclick = () => {
+                if (tempScannerInstance) {
+                    tempScannerInstance.stop().then(() => {
+                        document.body.removeChild(modalScanner);
+                    });
+                } else {
+                    document.body.removeChild(modalScanner);
+                }
+            };
+            
+            modalScanner.appendChild(scannerContainer);
+            modalScanner.appendChild(closeBtn);
+            document.body.appendChild(modalScanner);
 
+            let tempScannerInstance = null;
             const config = {
                 fps: 10,
                 qrbox: { width: 250, height: 250 }
             };
+
+            const tempScanner = new Html5Qrcode("temp-qr-reader");
+            tempScannerInstance = tempScanner;
 
             tempScanner.start(
                 { facingMode: "environment" },
@@ -806,7 +830,11 @@
                     const box = boxes.find(b => b.id === decodedText);
                     if (box) {
                         tempScanner.stop().then(() => {
-                            document.body.removeChild(tempDiv);
+                            document.body.removeChild(modalScanner);
+                            document.getElementById('item-box').value = box.id;
+                            alert(`Box "${box.name}" selezionato!`);
+                        }).catch(err => {
+                            document.body.removeChild(modalScanner);
                             document.getElementById('item-box').value = box.id;
                             alert(`Box "${box.name}" selezionato!`);
                         });
@@ -817,7 +845,7 @@
                 }
             ).catch(err => {
                 // Fallback: usa il metodo con scatto foto
-                document.body.removeChild(tempDiv);
+                document.body.removeChild(modalScanner);
                 
                 const tempInput = document.createElement('input');
                 tempInput.type = 'file';
@@ -880,8 +908,16 @@
                     // Verifica se è un box valido
                     const box = boxes.find(b => b.id === decodedText);
                     if (box) {
-                        stopScanner();
-                        showBoxModal(box);
+                        // Ferma lo scanner prima di procedere
+                        scanner.stop().then(() => {
+                            scanner.clear();
+                            scanner = null;
+                            // Mostra il box trovato
+                            showBoxModal(box);
+                        }).catch(err => {
+                            console.error('Errore stop scanner:', err);
+                            showBoxModal(box);
+                        });
                     }
                 },
                 (errorMessage) => {
