@@ -729,19 +729,6 @@
             updateBoxSelect();
             displayAllItems();
             
-            // Controlla se c'è un box nell'URL (QR code scansionato)
-            const urlParams = new URLSearchParams(window.location.search);
-            const boxParam = urlParams.get('box');
-            
-            if (boxParam) {
-                try {
-                    const boxInfo = JSON.parse(decodeURIComponent(boxParam));
-                    handleScannedBox(boxInfo);
-                } catch (e) {
-                    console.error('Errore parsing box URL:', e);
-                }
-            }
-            
             // Registra Service Worker per PWA
             if ('serviceWorker' in navigator) {
                 // Crea service worker inline
@@ -786,58 +773,6 @@
                 deferredPrompt = null;
             });
         });
-
-        // Gestisci box scansionato da URL
-        function handleScannedBox(boxInfo) {
-            // Cerca se il box esiste già
-            const existingBox = boxes.find(b => b.id === boxInfo.id);
-            
-            if (existingBox) {
-                // Box esiste nell'app - mostra il modal
-                showBoxModal(existingBox);
-            } else {
-                // Box non esiste - mostra le informazioni in un modal informativo
-                showExternalBoxInfo(boxInfo);
-            }
-            
-            // Pulisci l'URL
-            window.history.replaceState({}, document.title, window.location.pathname);
-        }
-
-        // Mostra info box esterno (scansionato senza app)
-        function showExternalBoxInfo(boxInfo) {
-            const modal = document.createElement('div');
-            modal.className = 'modal active';
-            modal.innerHTML = `
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h2>📦 ${boxInfo.name}</h2>
-                        <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
-                    </div>
-                    
-                    <div style="background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                        <p style="color: #1E40AF; font-size: 14px; margin: 0;">
-                            <strong>ℹ️ Informazioni Box</strong><br>
-                            Hai scansionato un QR code dell'Archivio Personale
-                        </p>
-                    </div>
-                    
-                    <p style="color: #666; margin-bottom: 15px;"><strong>Posizione:</strong><br>${boxInfo.description || 'Nessuna descrizione'}</p>
-                    <p style="color: #666; margin-bottom: 20px;"><strong>Codice Box:</strong> ${boxInfo.id}</p>
-                    
-                    <div style="background: #F9FAFB; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-                        <p style="color: #666; font-size: 14px; margin: 0;">
-                            Per vedere tutti gli oggetti in questo box e gestire il tuo archivio completo, installa l'app Archivio Personale.
-                        </p>
-                    </div>
-                    
-                    <button class="btn" onclick="this.closest('.modal').remove(); showInstallBanner();">📱 Installa App</button>
-                    <button class="btn btn-secondary" onclick="this.closest('.modal').remove();">Chiudi</button>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-        }
 
         // Gestione tabs
         function showTab(tabName) {
@@ -1036,18 +971,8 @@
             document.getElementById('modal-box-name').textContent = box.name;
             document.getElementById('modal-box-description').textContent = box.description || 'Nessuna descrizione';
 
-            // Genera QR code con URL
+            // Genera QR code semplice con solo l'ID (più facile da stampare)
             const qrContainer = document.getElementById('modal-qr-container');
-            
-            // Crea un URL con le informazioni del box codificate
-            const boxInfo = encodeURIComponent(JSON.stringify({
-                id: box.id,
-                name: box.name,
-                description: box.description
-            }));
-            
-            // URL che funziona anche senza app
-            const qrUrl = `${window.location.origin}${window.location.pathname}?box=${boxInfo}`;
             
             if (box.isExisting) {
                 qrContainer.innerHTML = `
@@ -1061,13 +986,14 @@
                 qrContainer.innerHTML = '<div id="qrcode"></div>';
             }
             
+            // QR code semplice con solo l'ID per stampa termica
             new QRCode(document.getElementById("qrcode"), {
-                text: qrUrl,
+                text: box.id,
                 width: 256,
                 height: 256,
                 colorDark: "#000000",
                 colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
+                correctLevel: QRCode.CorrectLevel.M  // Livello medio, più semplice da stampare
             });
 
             // Mostra oggetti nel box
@@ -1531,25 +1457,8 @@
                 { facingMode: "environment" },
                 config,
                 (decodedText) => {
-                    // Verifica se è un URL o un ID semplice
-                    let boxToFind = null;
-                    
-                    if (decodedText.includes('?box=')) {
-                        // È un URL con info box
-                        try {
-                            const url = new URL(decodedText);
-                            const boxParam = url.searchParams.get('box');
-                            if (boxParam) {
-                                const boxInfo = JSON.parse(decodeURIComponent(boxParam));
-                                boxToFind = boxes.find(b => b.id === boxInfo.id);
-                            }
-                        } catch (e) {
-                            console.error('Errore parsing URL QR:', e);
-                        }
-                    } else {
-                        // È un ID semplice (vecchio formato o QR esistente)
-                        boxToFind = boxes.find(b => b.id === decodedText);
-                    }
+                    // Cerca il box tramite ID
+                    const boxToFind = boxes.find(b => b.id === decodedText);
                     
                     if (boxToFind) {
                         // Ferma lo scanner prima di procedere
