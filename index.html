@@ -420,6 +420,7 @@
             <button class="nav-tab" onclick="showTab('add-item')">➕ Nuovo Oggetto</button>
             <button class="nav-tab" onclick="showTab('search')">🔍 Cerca</button>
             <button class="nav-tab" onclick="showTab('scan')">📸 Scansiona QR</button>
+            <button class="nav-tab" onclick="showTab('backup')">💾 Backup</button>
         </div>
 
         <!-- HOME TAB -->
@@ -545,6 +546,57 @@
                 <button class="btn btn-secondary" onclick="stopScanner()" style="margin-top: 20px;">Chiudi Scanner</button>
             </div>
         </div>
+
+        <!-- BACKUP TAB -->
+        <div id="backup" class="tab-content">
+            <div class="card">
+                <h2 style="margin-bottom: 20px; color: #333;">💾 Backup e Ripristino</h2>
+                
+                <div style="background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <p style="color: #1E40AF; font-size: 14px; margin: 0;">
+                        <strong>Info:</strong> I tuoi dati sono salvati localmente sul dispositivo. Crea un backup per non perderli in caso di cambio dispositivo o cancellazione dati del browser.
+                    </p>
+                </div>
+
+                <h3 style="color: #333; margin-bottom: 15px;">📤 Esporta Backup</h3>
+                <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Scarica tutti i tuoi dati (box, oggetti e foto) in un file JSON</p>
+                <button class="btn" onclick="exportBackup()">📥 Scarica Backup</button>
+
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
+
+                <h3 style="color: #333; margin-bottom: 15px;">📥 Importa Backup</h3>
+                <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Ripristina i dati da un file di backup precedente</p>
+                
+                <div class="file-input-wrapper">
+                    <input type="file" id="backup-file" accept=".json" onchange="importBackup(this)">
+                    <label for="backup-file" class="file-input-label">
+                        📂 Seleziona File Backup (.json)
+                    </label>
+                </div>
+
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
+
+                <h3 style="color: #333; margin-bottom: 15px;">🔄 Condividi Dati</h3>
+                <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Condividi il backup su altri dispositivi o servizi cloud</p>
+                <button class="btn btn-secondary" onclick="shareBackup()">📤 Condividi Backup</button>
+
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
+
+                <h3 style="color: #EF4444; margin-bottom: 15px;">⚠️ Cancella Tutti i Dati</h3>
+                <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Elimina permanentemente tutti i box e oggetti. <strong>Questa azione non può essere annullata!</strong></p>
+                <button class="btn btn-danger" onclick="deleteAllData()">🗑️ Cancella Tutto</button>
+            </div>
+
+            <div class="card">
+                <h3 style="color: #333; margin-bottom: 15px;">📊 Informazioni Archivio</h3>
+                <div style="background: #F9FAFB; padding: 15px; border-radius: 8px;">
+                    <p style="margin-bottom: 8px; color: #666;"><strong>Box totali:</strong> <span id="backup-box-count">0</span></p>
+                    <p style="margin-bottom: 8px; color: #666;"><strong>Oggetti totali:</strong> <span id="backup-item-count">0</span></p>
+                    <p style="margin-bottom: 8px; color: #666;"><strong>Foto archiviate:</strong> <span id="backup-photo-count">0</span></p>
+                    <p style="margin-bottom: 0; color: #666;"><strong>Dimensione stimata:</strong> <span id="backup-size">0 KB</span></p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal per visualizzare Box -->
@@ -624,6 +676,10 @@
 
             if (tabName === 'search') {
                 displayAllItems();
+            }
+
+            if (tabName === 'backup') {
+                updateBackupInfo();
             }
         }
 
@@ -1379,6 +1435,188 @@
                 }
             });
         });
+
+        // ===== FUNZIONI BACKUP =====
+
+        // Aggiorna informazioni backup
+        function updateBackupInfo() {
+            document.getElementById('backup-box-count').textContent = boxes.length;
+            document.getElementById('backup-item-count').textContent = items.length;
+            
+            const photosCount = items.filter(item => item.photo).length;
+            document.getElementById('backup-photo-count').textContent = photosCount;
+            
+            // Calcola dimensione approssimativa
+            const dataStr = JSON.stringify({boxes, items});
+            const sizeKB = (new Blob([dataStr]).size / 1024).toFixed(2);
+            document.getElementById('backup-size').textContent = sizeKB + ' KB';
+        }
+
+        // Esporta backup
+        function exportBackup() {
+            const backupData = {
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                boxes: boxes,
+                items: items
+            };
+
+            const dataStr = JSON.stringify(backupData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            const dateStr = new Date().toISOString().split('T')[0];
+            a.download = `archivio-backup-${dateStr}.json`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            alert('✓ Backup scaricato con successo!');
+        }
+
+        // Importa backup
+        function importBackup(input) {
+            if (!input.files || !input.files[0]) return;
+
+            const file = input.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                try {
+                    const backupData = JSON.parse(e.target.result);
+                    
+                    // Validazione base
+                    if (!backupData.boxes || !backupData.items) {
+                        alert('❌ File di backup non valido');
+                        return;
+                    }
+
+                    // Conferma prima di sovrascrivere
+                    const currentData = boxes.length + items.length;
+                    const newData = backupData.boxes.length + backupData.items.length;
+                    
+                    const confirmMsg = currentData > 0 
+                        ? `Hai ${boxes.length} box e ${items.length} oggetti.\n\nIl backup contiene ${backupData.boxes.length} box e ${backupData.items.length} oggetti.\n\n⚠️ I dati attuali verranno SOSTITUITI. Continuare?`
+                        : `Il backup contiene ${backupData.boxes.length} box e ${backupData.items.length} oggetti.\n\nImportare questi dati?`;
+                    
+                    if (!confirm(confirmMsg)) {
+                        input.value = '';
+                        return;
+                    }
+
+                    // Importa i dati
+                    boxes = backupData.boxes;
+                    items = backupData.items;
+                    
+                    localStorage.setItem('boxes', JSON.stringify(boxes));
+                    localStorage.setItem('items', JSON.stringify(items));
+
+                    // Aggiorna interfaccia
+                    updateStats();
+                    displayBoxes();
+                    updateBoxSelect();
+                    updateBackupInfo();
+
+                    alert(`✓ Backup importato con successo!\n\n${boxes.length} box e ${items.length} oggetti ripristinati.`);
+                    
+                    // Torna alla home
+                    showTab('home');
+                    
+                } catch (error) {
+                    console.error('Errore importazione backup:', error);
+                    alert('❌ Errore durante l\'importazione del backup. Assicurati che il file sia valido.');
+                }
+                
+                input.value = '';
+            };
+
+            reader.readAsText(file);
+        }
+
+        // Condividi backup
+        async function shareBackup() {
+            const backupData = {
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                boxes: boxes,
+                items: items
+            };
+
+            const dataStr = JSON.stringify(backupData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const dateStr = new Date().toISOString().split('T')[0];
+            const file = new File([blob], `archivio-backup-${dateStr}.json`, { type: 'application/json' });
+            
+            if (navigator.share && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Backup Archivio Personale',
+                        text: `Backup del ${dateStr} - ${boxes.length} box, ${items.length} oggetti`
+                    });
+                    alert('✓ Backup condiviso con successo!');
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.log('Condivisione annullata o fallita', err);
+                        // Fallback: scarica il file
+                        exportBackup();
+                    }
+                }
+            } else {
+                alert('La condivisione non è supportata su questo dispositivo. Il backup verrà scaricato.');
+                exportBackup();
+            }
+        }
+
+        // Cancella tutti i dati
+        function deleteAllData() {
+            if (boxes.length === 0 && items.length === 0) {
+                alert('Non ci sono dati da cancellare.');
+                return;
+            }
+
+            const confirmMsg = `⚠️ ATTENZIONE ⚠️\n\nStai per eliminare:\n- ${boxes.length} box\n- ${items.length} oggetti\n- Tutte le foto\n\nQuesta operazione è IRREVERSIBILE!\n\nDigita "CANCELLA" per confermare:`;
+            
+            const userInput = prompt(confirmMsg);
+            
+            if (userInput === 'CANCELLA') {
+                // Crea un backup automatico prima di cancellare
+                const autoBackup = {
+                    version: '1.0',
+                    exportDate: new Date().toISOString(),
+                    boxes: boxes,
+                    items: items
+                };
+                
+                const dataStr = JSON.stringify(autoBackup, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `archivio-backup-auto-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                // Cancella i dati
+                boxes = [];
+                items = [];
+                localStorage.removeItem('boxes');
+                localStorage.removeItem('items');
+
+                updateStats();
+                displayBoxes();
+                updateBoxSelect();
+                updateBackupInfo();
+
+                alert('✓ Tutti i dati sono stati cancellati.\n\nUn backup automatico è stato salvato prima della cancellazione.');
+                
+                showTab('home');
+            } else if (userInput !== null) {
+                alert('Cancellazione annullata. Devi digitare esattamente "CANCELLA" per confermare.');
+            }
+        }
     </script>
 </body>
 </html>
