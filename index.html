@@ -1081,35 +1081,202 @@
             const canvas = document.querySelector('#modal-qr-container canvas');
             if (!canvas) return;
 
-            canvas.toBlob(async (blob) => {
-                const file = new File([blob], `qrcode_${currentBox.name}.png`, { type: 'image/png' });
+            // Crea un nuovo canvas più grande per includere le informazioni
+            const finalCanvas = document.createElement('canvas');
+            const ctx = finalCanvas.getContext('2d');
+            
+            // Dimensioni del canvas finale
+            const qrSize = 256;
+            const padding = 30;
+            const textHeight = 150;
+            finalCanvas.width = qrSize + (padding * 2);
+            finalCanvas.height = qrSize + textHeight + (padding * 2);
+            
+            // Sfondo bianco
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+            
+            // Disegna il QR code
+            ctx.drawImage(canvas, padding, padding, qrSize, qrSize);
+            
+            // Aggiungi bordo al QR code
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(padding, padding, qrSize, qrSize);
+            
+            // Aggiungi le informazioni del box
+            ctx.fillStyle = '#1F2937';
+            ctx.font = 'bold 24px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            
+            // Nome del box
+            const maxWidth = qrSize;
+            let yPosition = qrSize + padding + 40;
+            
+            // Tronca il testo se troppo lungo
+            let boxName = currentBox.name;
+            if (ctx.measureText(boxName).width > maxWidth) {
+                while (ctx.measureText(boxName + '...').width > maxWidth && boxName.length > 0) {
+                    boxName = boxName.slice(0, -1);
+                }
+                boxName += '...';
+            }
+            ctx.fillText(boxName, finalCanvas.width / 2, yPosition);
+            
+            // Descrizione (più piccola)
+            if (currentBox.description) {
+                ctx.font = '16px Arial, sans-serif';
+                ctx.fillStyle = '#6B7280';
+                yPosition += 30;
+                
+                // Dividi la descrizione in più righe se necessario
+                const words = currentBox.description.split(' ');
+                let line = '';
+                let lines = [];
+                
+                for (let word of words) {
+                    const testLine = line + word + ' ';
+                    if (ctx.measureText(testLine).width > maxWidth) {
+                        if (line) lines.push(line.trim());
+                        line = word + ' ';
+                    } else {
+                        line = testLine;
+                    }
+                }
+                if (line) lines.push(line.trim());
+                
+                // Mostra max 2 righe
+                for (let i = 0; i < Math.min(lines.length, 2); i++) {
+                    let displayLine = lines[i];
+                    if (i === 1 && lines.length > 2) {
+                        displayLine += '...';
+                    }
+                    ctx.fillText(displayLine, finalCanvas.width / 2, yPosition);
+                    yPosition += 22;
+                }
+            }
+            
+            // Aggiungi icona in basso
+            ctx.font = '14px Arial, sans-serif';
+            ctx.fillStyle = '#9CA3AF';
+            ctx.fillText('📦 Archivio Personale', finalCanvas.width / 2, finalCanvas.height - 15);
+
+            // Converti in blob e condividi
+            finalCanvas.toBlob(async (blob) => {
+                const file = new File([blob], `box_${currentBox.name.replace(/[^a-z0-9]/gi, '_')}.png`, { type: 'image/png' });
                 
                 if (navigator.share && navigator.canShare({ files: [file] })) {
                     try {
                         await navigator.share({
                             files: [file],
-                            title: `QR Code - ${currentBox.name}`,
-                            text: `QR Code per ${currentBox.name}`
+                            title: `Box: ${currentBox.name}`,
+                            text: currentBox.description || ''
                         });
                     } catch (err) {
-                        console.log('Condivisione annullata', err);
-                        downloadQRCode();
+                        if (err.name !== 'AbortError') {
+                            console.log('Condivisione annullata', err);
+                            downloadQRCodeWithInfo(finalCanvas);
+                        }
                     }
                 } else {
-                    downloadQRCode();
+                    downloadQRCodeWithInfo(finalCanvas);
                 }
             });
         }
 
-        // Scarica QR code
-        function downloadQRCode() {
-            const canvas = document.querySelector('#modal-qr-container canvas');
-            if (!canvas) return;
-
+        // Scarica QR code con informazioni
+        function downloadQRCodeWithInfo(canvas) {
             const url = canvas.toDataURL('image/png');
             const a = document.createElement('a');
             a.href = url;
-            a.download = `qrcode_${currentBox.name}.png`;
+            a.download = `box_${currentBox.name.replace(/[^a-z0-9]/gi, '_')}.png`;
+            a.click();
+        }
+
+        // Scarica QR code
+        function downloadQRCode() {
+            // Usa la stessa logica di shareQRCode per creare l'immagine completa
+            const canvas = document.querySelector('#modal-qr-container canvas');
+            if (!canvas) return;
+
+            // Crea un nuovo canvas con le informazioni
+            const finalCanvas = document.createElement('canvas');
+            const ctx = finalCanvas.getContext('2d');
+            
+            const qrSize = 256;
+            const padding = 30;
+            const textHeight = 150;
+            finalCanvas.width = qrSize + (padding * 2);
+            finalCanvas.height = qrSize + textHeight + (padding * 2);
+            
+            // Sfondo bianco
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+            
+            // Disegna il QR code
+            ctx.drawImage(canvas, padding, padding, qrSize, qrSize);
+            
+            // Bordo
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(padding, padding, qrSize, qrSize);
+            
+            // Testo
+            ctx.fillStyle = '#1F2937';
+            ctx.font = 'bold 24px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            
+            const maxWidth = qrSize;
+            let yPosition = qrSize + padding + 40;
+            
+            let boxName = currentBox.name;
+            if (ctx.measureText(boxName).width > maxWidth) {
+                while (ctx.measureText(boxName + '...').width > maxWidth && boxName.length > 0) {
+                    boxName = boxName.slice(0, -1);
+                }
+                boxName += '...';
+            }
+            ctx.fillText(boxName, finalCanvas.width / 2, yPosition);
+            
+            if (currentBox.description) {
+                ctx.font = '16px Arial, sans-serif';
+                ctx.fillStyle = '#6B7280';
+                yPosition += 30;
+                
+                const words = currentBox.description.split(' ');
+                let line = '';
+                let lines = [];
+                
+                for (let word of words) {
+                    const testLine = line + word + ' ';
+                    if (ctx.measureText(testLine).width > maxWidth) {
+                        if (line) lines.push(line.trim());
+                        line = word + ' ';
+                    } else {
+                        line = testLine;
+                    }
+                }
+                if (line) lines.push(line.trim());
+                
+                for (let i = 0; i < Math.min(lines.length, 2); i++) {
+                    let displayLine = lines[i];
+                    if (i === 1 && lines.length > 2) {
+                        displayLine += '...';
+                    }
+                    ctx.fillText(displayLine, finalCanvas.width / 2, yPosition);
+                    yPosition += 22;
+                }
+            }
+            
+            ctx.font = '14px Arial, sans-serif';
+            ctx.fillStyle = '#9CA3AF';
+            ctx.fillText('📦 Archivio Personale', finalCanvas.width / 2, finalCanvas.height - 15);
+
+            // Scarica
+            const url = finalCanvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `box_${currentBox.name.replace(/[^a-z0-9]/gi, '_')}.png`;
             a.click();
         }
 
