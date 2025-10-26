@@ -5,9 +5,46 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Archivio Personale</title>
     <meta name="theme-color" content="#4F46E5">
-    <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQXJjaGl2aW8gUGVyc29uYWxlIiwic2hvcnRfbmFtZSI6IkFyY2hpdmlvIiwiZGlzcGxheSI6InN0YW5kYWxvbmUiLCJzdGFydF91cmwiOiIvIiwiYmFja2dyb3VuZF9jb2xvciI6IiNmZmZmZmYiLCJ0aGVtZV9jb2xvciI6IiM0RjQ2RTUifQ==">
+    <meta name="description" content="Gestisci il tuo archivio personale con QR code">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Archivio">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%234F46E5' width='100' height='100'/><text y='75' font-size='70' fill='white' text-anchor='middle' x='50'>📦</text></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='70' text-anchor='middle' x='50'>📦</text></svg>">
+    <link rel="manifest" id="manifest-placeholder">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <script>
+        // Crea il manifest dinamicamente
+        const manifestData = {
+            "name": "Archivio Personale",
+            "short_name": "Archivio",
+            "description": "Gestisci il tuo archivio personale con QR code",
+            "start_url": "./",
+            "display": "standalone",
+            "background_color": "#ffffff",
+            "theme_color": "#4F46E5",
+            "orientation": "portrait",
+            "icons": [
+                {
+                    "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%234F46E5' width='192' height='192' rx='40'/><text y='145' font-size='120' fill='white' text-anchor='middle' x='96'>📦</text></svg>",
+                    "sizes": "192x192",
+                    "type": "image/svg+xml",
+                    "purpose": "any maskable"
+                },
+                {
+                    "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%234F46E5' width='512' height='512' rx='100'/><text y='390' font-size='320' fill='white' text-anchor='middle' x='256'>📦</text></svg>",
+                    "sizes": "512x512",
+                    "type": "image/svg+xml",
+                    "purpose": "any maskable"
+                }
+            ]
+        };
+        
+        const manifestBlob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        document.getElementById('manifest-placeholder').setAttribute('href', manifestURL);
+    </script>
     <style>
         * {
             margin: 0;
@@ -654,6 +691,50 @@
             displayBoxes();
             updateBoxSelect();
             displayAllItems();
+            
+            // Registra Service Worker per PWA
+            if ('serviceWorker' in navigator) {
+                // Crea service worker inline
+                const swCode = `
+                    const CACHE_NAME = 'archivio-v1';
+                    
+                    self.addEventListener('install', (event) => {
+                        self.skipWaiting();
+                    });
+                    
+                    self.addEventListener('activate', (event) => {
+                        event.waitUntil(clients.claim());
+                    });
+                    
+                    self.addEventListener('fetch', (event) => {
+                        event.respondWith(
+                            caches.match(event.request).then((response) => {
+                                return response || fetch(event.request);
+                            })
+                        );
+                    });
+                `;
+                
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                
+                navigator.serviceWorker.register(swUrl)
+                    .then(reg => console.log('Service Worker registrato'))
+                    .catch(err => console.log('Service Worker non registrato:', err));
+            }
+            
+            // Mostra banner di installazione
+            let deferredPrompt;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                showInstallBanner();
+            });
+            
+            window.addEventListener('appinstalled', () => {
+                hideInstallBanner();
+                deferredPrompt = null;
+            });
         });
 
         // Gestione tabs
@@ -1617,6 +1698,98 @@
                 alert('Cancellazione annullata. Devi digitare esattamente "CANCELLA" per confermare.');
             }
         }
+
+        // ===== FUNZIONI PWA INSTALLAZIONE =====
+
+        let installBanner = null;
+        let deferredPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            showInstallBanner();
+        });
+
+        window.addEventListener('appinstalled', () => {
+            hideInstallBanner();
+            deferredPrompt = null;
+        });
+
+        function showInstallBanner() {
+            // Controlla se il banner è già stato mostrato o se l'app è già installata
+            if (localStorage.getItem('installBannerDismissed') === 'true') return;
+            if (window.matchMedia('(display-mode: standalone)').matches) return;
+            
+            installBanner = document.createElement('div');
+            installBanner.id = 'install-banner';
+            installBanner.style.cssText = `
+                position: fixed;
+                bottom: 80px;
+                left: 20px;
+                right: 20px;
+                background: white;
+                padding: 20px;
+                border-radius: 15px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                z-index: 9999;
+                animation: slideUp 0.3s ease;
+            `;
+            
+            installBanner.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <div style="font-size: 40px;">📦</div>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 5px 0; color: #333; font-size: 16px;">Installa Archivio</h3>
+                        <p style="margin: 0; color: #666; font-size: 13px;">Aggiungi alla schermata home per accesso rapido</p>
+                    </div>
+                    <button onclick="installApp()" style="background: #4F46E5; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer;">Installa</button>
+                </div>
+                <button onclick="dismissInstallBanner()" style="position: absolute; top: 10px; right: 10px; background: none; border: none; color: #999; font-size: 20px; cursor: pointer; padding: 5px;">&times;</button>
+            `;
+            
+            document.body.appendChild(installBanner);
+        }
+
+        function hideInstallBanner() {
+            if (installBanner && installBanner.parentNode) {
+                installBanner.parentNode.removeChild(installBanner);
+                installBanner = null;
+            }
+        }
+
+        function dismissInstallBanner() {
+            localStorage.setItem('installBannerDismissed', 'true');
+            hideInstallBanner();
+        }
+
+        async function installApp() {
+            if (!deferredPrompt) {
+                alert('Installazione non disponibile. Usa il menu del browser per "Aggiungi alla schermata Home".');
+                return;
+            }
+            
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            
+            if (outcome === 'accepted') {
+                console.log('App installata');
+            }
+            
+            deferredPrompt = null;
+            hideInstallBanner();
+        }
     </script>
+    <style>
+        @keyframes slideUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
 </body>
 </html>
