@@ -1081,62 +1081,75 @@
             const canvas = document.querySelector('#modal-qr-container canvas');
             if (!canvas) return;
 
-            // Crea un nuovo canvas più grande per includere le informazioni
+            // Crea un nuovo canvas orizzontale per etichetta
             const finalCanvas = document.createElement('canvas');
             const ctx = finalCanvas.getContext('2d');
             
-            // Dimensioni del canvas finale
-            const qrSize = 256;
-            const padding = 30;
-            const textHeight = 150;
-            finalCanvas.width = qrSize + (padding * 2);
-            finalCanvas.height = qrSize + textHeight + (padding * 2);
+            // Dimensioni ottimizzate per etichetta orizzontale (es. 62mm x 29mm stampante termica)
+            const qrSize = 200;
+            const padding = 20;
+            const textWidth = 320;
+            finalCanvas.width = qrSize + textWidth + (padding * 3);
+            finalCanvas.height = qrSize + (padding * 2);
             
             // Sfondo bianco
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
             
-            // Disegna il QR code
+            // Disegna il QR code a sinistra
             ctx.drawImage(canvas, padding, padding, qrSize, qrSize);
             
-            // Aggiungi bordo al QR code
+            // Aggiungi bordo sottile al QR code
             ctx.strokeStyle = '#e0e0e0';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 1;
             ctx.strokeRect(padding, padding, qrSize, qrSize);
             
-            // Aggiungi le informazioni del box
+            // Area testo a destra del QR code
+            const textStartX = qrSize + (padding * 2);
+            const textCenterY = finalCanvas.height / 2;
+            
+            // Nome del box (grande e in grassetto)
             ctx.fillStyle = '#1F2937';
-            ctx.font = 'bold 24px Arial, sans-serif';
-            ctx.textAlign = 'center';
+            ctx.font = 'bold 32px Arial, sans-serif';
+            ctx.textAlign = 'left';
             
-            // Nome del box
-            const maxWidth = qrSize;
-            let yPosition = qrSize + padding + 40;
+            let yPosition = textCenterY - 40;
             
-            // Tronca il testo se troppo lungo
+            // Gestisci testo lungo per il nome
             let boxName = currentBox.name;
-            if (ctx.measureText(boxName).width > maxWidth) {
-                while (ctx.measureText(boxName + '...').width > maxWidth && boxName.length > 0) {
+            const nameMaxWidth = textWidth - 20;
+            
+            if (ctx.measureText(boxName).width > nameMaxWidth) {
+                while (ctx.measureText(boxName + '...').width > nameMaxWidth && boxName.length > 0) {
                     boxName = boxName.slice(0, -1);
                 }
                 boxName += '...';
             }
-            ctx.fillText(boxName, finalCanvas.width / 2, yPosition);
             
-            // Descrizione (più piccola)
+            ctx.fillText(boxName, textStartX, yPosition);
+            
+            // Linea separatrice
+            ctx.strokeStyle = '#E5E7EB';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(textStartX, yPosition + 10);
+            ctx.lineTo(textStartX + nameMaxWidth, yPosition + 10);
+            ctx.stroke();
+            
+            // Descrizione (più piccola, sotto il nome)
             if (currentBox.description) {
-                ctx.font = '16px Arial, sans-serif';
+                ctx.font = '18px Arial, sans-serif';
                 ctx.fillStyle = '#6B7280';
-                yPosition += 30;
+                yPosition += 40;
                 
-                // Dividi la descrizione in più righe se necessario
+                // Dividi la descrizione in righe
                 const words = currentBox.description.split(' ');
                 let line = '';
                 let lines = [];
                 
                 for (let word of words) {
                     const testLine = line + word + ' ';
-                    if (ctx.measureText(testLine).width > maxWidth) {
+                    if (ctx.measureText(testLine).width > nameMaxWidth) {
                         if (line) lines.push(line.trim());
                         line = word + ' ';
                     } else {
@@ -1145,31 +1158,32 @@
                 }
                 if (line) lines.push(line.trim());
                 
-                // Mostra max 2 righe
-                for (let i = 0; i < Math.min(lines.length, 2); i++) {
+                // Mostra max 3 righe
+                for (let i = 0; i < Math.min(lines.length, 3); i++) {
                     let displayLine = lines[i];
-                    if (i === 1 && lines.length > 2) {
-                        displayLine += '...';
+                    if (i === 2 && lines.length > 3) {
+                        displayLine = displayLine.substring(0, displayLine.length - 3) + '...';
                     }
-                    ctx.fillText(displayLine, finalCanvas.width / 2, yPosition);
-                    yPosition += 22;
+                    ctx.fillText(displayLine, textStartX, yPosition);
+                    yPosition += 24;
                 }
             }
             
-            // Aggiungi icona in basso
-            ctx.font = '14px Arial, sans-serif';
-            ctx.fillStyle = '#9CA3AF';
-            ctx.fillText('📦 Archivio Personale', finalCanvas.width / 2, finalCanvas.height - 15);
+            // Footer piccolo in basso a destra
+            ctx.font = '12px Arial, sans-serif';
+            ctx.fillStyle = '#D1D5DB';
+            ctx.textAlign = 'right';
+            ctx.fillText('📦 Archivio', finalCanvas.width - padding, finalCanvas.height - padding);
 
             // Converti in blob e condividi
             finalCanvas.toBlob(async (blob) => {
-                const file = new File([blob], `box_${currentBox.name.replace(/[^a-z0-9]/gi, '_')}.png`, { type: 'image/png' });
+                const file = new File([blob], `etichetta_${currentBox.name.replace(/[^a-z0-9]/gi, '_')}.png`, { type: 'image/png' });
                 
                 if (navigator.share && navigator.canShare({ files: [file] })) {
                     try {
                         await navigator.share({
                             files: [file],
-                            title: `Box: ${currentBox.name}`,
+                            title: `Etichetta: ${currentBox.name}`,
                             text: currentBox.description || ''
                         });
                     } catch (err) {
@@ -1189,59 +1203,72 @@
             const url = canvas.toDataURL('image/png');
             const a = document.createElement('a');
             a.href = url;
-            a.download = `box_${currentBox.name.replace(/[^a-z0-9]/gi, '_')}.png`;
+            a.download = `etichetta_${currentBox.name.replace(/[^a-z0-9]/gi, '_')}.png`;
             a.click();
         }
 
         // Scarica QR code
         function downloadQRCode() {
-            // Usa la stessa logica di shareQRCode per creare l'immagine completa
+            // Usa la stessa logica di shareQRCode per creare l'etichetta orizzontale
             const canvas = document.querySelector('#modal-qr-container canvas');
             if (!canvas) return;
 
-            // Crea un nuovo canvas con le informazioni
+            // Crea canvas orizzontale
             const finalCanvas = document.createElement('canvas');
             const ctx = finalCanvas.getContext('2d');
             
-            const qrSize = 256;
-            const padding = 30;
-            const textHeight = 150;
-            finalCanvas.width = qrSize + (padding * 2);
-            finalCanvas.height = qrSize + textHeight + (padding * 2);
+            const qrSize = 200;
+            const padding = 20;
+            const textWidth = 320;
+            finalCanvas.width = qrSize + textWidth + (padding * 3);
+            finalCanvas.height = qrSize + (padding * 2);
             
             // Sfondo bianco
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
             
-            // Disegna il QR code
+            // QR code a sinistra
             ctx.drawImage(canvas, padding, padding, qrSize, qrSize);
             
-            // Bordo
             ctx.strokeStyle = '#e0e0e0';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 1;
             ctx.strokeRect(padding, padding, qrSize, qrSize);
             
-            // Testo
-            ctx.fillStyle = '#1F2937';
-            ctx.font = 'bold 24px Arial, sans-serif';
-            ctx.textAlign = 'center';
+            // Testo a destra
+            const textStartX = qrSize + (padding * 2);
+            const textCenterY = finalCanvas.height / 2;
             
-            const maxWidth = qrSize;
-            let yPosition = qrSize + padding + 40;
+            ctx.fillStyle = '#1F2937';
+            ctx.font = 'bold 32px Arial, sans-serif';
+            ctx.textAlign = 'left';
+            
+            let yPosition = textCenterY - 40;
             
             let boxName = currentBox.name;
-            if (ctx.measureText(boxName).width > maxWidth) {
-                while (ctx.measureText(boxName + '...').width > maxWidth && boxName.length > 0) {
+            const nameMaxWidth = textWidth - 20;
+            
+            if (ctx.measureText(boxName).width > nameMaxWidth) {
+                while (ctx.measureText(boxName + '...').width > nameMaxWidth && boxName.length > 0) {
                     boxName = boxName.slice(0, -1);
                 }
                 boxName += '...';
             }
-            ctx.fillText(boxName, finalCanvas.width / 2, yPosition);
             
+            ctx.fillText(boxName, textStartX, yPosition);
+            
+            // Linea separatrice
+            ctx.strokeStyle = '#E5E7EB';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(textStartX, yPosition + 10);
+            ctx.lineTo(textStartX + nameMaxWidth, yPosition + 10);
+            ctx.stroke();
+            
+            // Descrizione
             if (currentBox.description) {
-                ctx.font = '16px Arial, sans-serif';
+                ctx.font = '18px Arial, sans-serif';
                 ctx.fillStyle = '#6B7280';
-                yPosition += 30;
+                yPosition += 40;
                 
                 const words = currentBox.description.split(' ');
                 let line = '';
@@ -1249,7 +1276,7 @@
                 
                 for (let word of words) {
                     const testLine = line + word + ' ';
-                    if (ctx.measureText(testLine).width > maxWidth) {
+                    if (ctx.measureText(testLine).width > nameMaxWidth) {
                         if (line) lines.push(line.trim());
                         line = word + ' ';
                     } else {
@@ -1258,25 +1285,27 @@
                 }
                 if (line) lines.push(line.trim());
                 
-                for (let i = 0; i < Math.min(lines.length, 2); i++) {
+                for (let i = 0; i < Math.min(lines.length, 3); i++) {
                     let displayLine = lines[i];
-                    if (i === 1 && lines.length > 2) {
-                        displayLine += '...';
+                    if (i === 2 && lines.length > 3) {
+                        displayLine = displayLine.substring(0, displayLine.length - 3) + '...';
                     }
-                    ctx.fillText(displayLine, finalCanvas.width / 2, yPosition);
-                    yPosition += 22;
+                    ctx.fillText(displayLine, textStartX, yPosition);
+                    yPosition += 24;
                 }
             }
             
-            ctx.font = '14px Arial, sans-serif';
-            ctx.fillStyle = '#9CA3AF';
-            ctx.fillText('📦 Archivio Personale', finalCanvas.width / 2, finalCanvas.height - 15);
+            // Footer
+            ctx.font = '12px Arial, sans-serif';
+            ctx.fillStyle = '#D1D5DB';
+            ctx.textAlign = 'right';
+            ctx.fillText('📦 Archivio', finalCanvas.width - padding, finalCanvas.height - padding);
 
             // Scarica
             const url = finalCanvas.toDataURL('image/png');
             const a = document.createElement('a');
             a.href = url;
-            a.download = `box_${currentBox.name.replace(/[^a-z0-9]/gi, '_')}.png`;
+            a.download = `etichetta_${currentBox.name.replace(/[^a-z0-9]/gi, '_')}.png`;
             a.click();
         }
 
