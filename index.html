@@ -684,6 +684,24 @@
             
             <div class="qr-preview" id="modal-qr-container"></div>
             
+            <div style="background: #F3F4F6; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #333;">Tipo QR Code da stampare:</label>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="qr-type" value="simple" checked>
+                        <span style="color: #666; font-size: 14px;">📱 Semplice (ID) - Migliore per stampanti termiche</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="qr-type" value="url">
+                        <span style="color: #666; font-size: 14px;">🌐 URL Completo - Leggibile anche senza app</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="qr-type" value="both">
+                        <span style="color: #666; font-size: 14px;">🔄 Entrambi - Due QR code sull'etichetta</span>
+                    </label>
+                </div>
+            </div>
+            
             <button class="btn" onclick="shareQRCode()">🖨️ Condividi per Stampare</button>
             <button class="btn btn-secondary" onclick="downloadQRCode()">💾 Scarica QR Code</button>
             
@@ -1004,102 +1022,17 @@
 
         // Condividi QR code per stampare
         async function shareQRCode() {
-            const canvas = document.querySelector('#modal-qr-container canvas');
-            if (!canvas) return;
-
-            // Crea un nuovo canvas orizzontale per etichetta
-            const finalCanvas = document.createElement('canvas');
-            const ctx = finalCanvas.getContext('2d');
+            const qrType = document.querySelector('input[name="qr-type"]:checked').value;
             
-            // Dimensioni ottimizzate per etichetta orizzontale (es. 62mm x 29mm stampante termica)
-            const qrSize = 200;
-            const padding = 20;
-            const textWidth = 320;
-            finalCanvas.width = qrSize + textWidth + (padding * 3);
-            finalCanvas.height = qrSize + (padding * 2);
+            let finalCanvas;
             
-            // Sfondo bianco
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
-            
-            // Disegna il QR code a sinistra
-            ctx.drawImage(canvas, padding, padding, qrSize, qrSize);
-            
-            // Aggiungi bordo sottile al QR code
-            ctx.strokeStyle = '#e0e0e0';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(padding, padding, qrSize, qrSize);
-            
-            // Area testo a destra del QR code
-            const textStartX = qrSize + (padding * 2);
-            const textCenterY = finalCanvas.height / 2;
-            
-            // Nome del box (grande e in grassetto)
-            ctx.fillStyle = '#1F2937';
-            ctx.font = 'bold 32px Arial, sans-serif';
-            ctx.textAlign = 'left';
-            
-            let yPosition = textCenterY - 40;
-            
-            // Gestisci testo lungo per il nome
-            let boxName = currentBox.name;
-            const nameMaxWidth = textWidth - 20;
-            
-            if (ctx.measureText(boxName).width > nameMaxWidth) {
-                while (ctx.measureText(boxName + '...').width > nameMaxWidth && boxName.length > 0) {
-                    boxName = boxName.slice(0, -1);
-                }
-                boxName += '...';
+            if (qrType === 'simple') {
+                finalCanvas = await createLabelWithSimpleQR();
+            } else if (qrType === 'url') {
+                finalCanvas = await createLabelWithURLQR();
+            } else if (qrType === 'both') {
+                finalCanvas = await createLabelWithBothQR();
             }
-            
-            ctx.fillText(boxName, textStartX, yPosition);
-            
-            // Linea separatrice
-            ctx.strokeStyle = '#E5E7EB';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(textStartX, yPosition + 10);
-            ctx.lineTo(textStartX + nameMaxWidth, yPosition + 10);
-            ctx.stroke();
-            
-            // Descrizione (più piccola, sotto il nome)
-            if (currentBox.description) {
-                ctx.font = '18px Arial, sans-serif';
-                ctx.fillStyle = '#6B7280';
-                yPosition += 40;
-                
-                // Dividi la descrizione in righe
-                const words = currentBox.description.split(' ');
-                let line = '';
-                let lines = [];
-                
-                for (let word of words) {
-                    const testLine = line + word + ' ';
-                    if (ctx.measureText(testLine).width > nameMaxWidth) {
-                        if (line) lines.push(line.trim());
-                        line = word + ' ';
-                    } else {
-                        line = testLine;
-                    }
-                }
-                if (line) lines.push(line.trim());
-                
-                // Mostra max 3 righe
-                for (let i = 0; i < Math.min(lines.length, 3); i++) {
-                    let displayLine = lines[i];
-                    if (i === 2 && lines.length > 3) {
-                        displayLine = displayLine.substring(0, displayLine.length - 3) + '...';
-                    }
-                    ctx.fillText(displayLine, textStartX, yPosition);
-                    yPosition += 24;
-                }
-            }
-            
-            // Footer piccolo in basso a destra
-            ctx.font = '12px Arial, sans-serif';
-            ctx.fillStyle = '#D1D5DB';
-            ctx.textAlign = 'right';
-            ctx.fillText('📦 Archivio', finalCanvas.width - padding, finalCanvas.height - padding);
 
             // Converti in blob e condividi
             finalCanvas.toBlob(async (blob) => {
@@ -1124,22 +1057,9 @@
             });
         }
 
-        // Scarica QR code con informazioni
-        function downloadQRCodeWithInfo(canvas) {
-            const url = canvas.toDataURL('image/png');
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `etichetta_${currentBox.name.replace(/[^a-z0-9]/gi, '_')}.png`;
-            a.click();
-        }
-
-        // Scarica QR code
-        function downloadQRCode() {
-            // Usa la stessa logica di shareQRCode per creare l'etichetta orizzontale
+        // Crea etichetta con QR semplice (solo ID)
+        async function createLabelWithSimpleQR() {
             const canvas = document.querySelector('#modal-qr-container canvas');
-            if (!canvas) return;
-
-            // Crea canvas orizzontale
             const finalCanvas = document.createElement('canvas');
             const ctx = finalCanvas.getContext('2d');
             
@@ -1149,21 +1069,165 @@
             finalCanvas.width = qrSize + textWidth + (padding * 3);
             finalCanvas.height = qrSize + (padding * 2);
             
-            // Sfondo bianco
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
             
-            // QR code a sinistra
             ctx.drawImage(canvas, padding, padding, qrSize, qrSize);
             
             ctx.strokeStyle = '#e0e0e0';
             ctx.lineWidth = 1;
             ctx.strokeRect(padding, padding, qrSize, qrSize);
             
-            // Testo a destra
-            const textStartX = qrSize + (padding * 2);
-            const textCenterY = finalCanvas.height / 2;
+            drawBoxText(ctx, qrSize + (padding * 2), finalCanvas.height / 2, textWidth - 20);
             
+            ctx.font = '12px Arial, sans-serif';
+            ctx.fillStyle = '#D1D5DB';
+            ctx.textAlign = 'right';
+            ctx.fillText('📦 Archivio', finalCanvas.width - padding, finalCanvas.height - padding);
+            
+            return finalCanvas;
+        }
+
+        // Crea etichetta con QR URL completo
+        async function createLabelWithURLQR() {
+            // Genera QR code con URL
+            const tempDiv = document.createElement('div');
+            tempDiv.style.display = 'none';
+            tempDiv.id = 'temp-qr-url';
+            document.body.appendChild(tempDiv);
+            
+            const boxInfo = encodeURIComponent(JSON.stringify({
+                id: currentBox.id,
+                name: currentBox.name,
+                description: currentBox.description
+            }));
+            const qrUrl = `${window.location.origin}${window.location.pathname}?box=${boxInfo}`;
+            
+            new QRCode(tempDiv, {
+                text: qrUrl,
+                width: 200,
+                height: 200,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+            
+            // Aspetta che il QR sia generato
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const urlCanvas = tempDiv.querySelector('canvas');
+            const finalCanvas = document.createElement('canvas');
+            const ctx = finalCanvas.getContext('2d');
+            
+            const qrSize = 200;
+            const padding = 20;
+            const textWidth = 320;
+            finalCanvas.width = qrSize + textWidth + (padding * 3);
+            finalCanvas.height = qrSize + (padding * 2);
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+            
+            ctx.drawImage(urlCanvas, padding, padding, qrSize, qrSize);
+            
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(padding, padding, qrSize, qrSize);
+            
+            drawBoxText(ctx, qrSize + (padding * 2), finalCanvas.height / 2, textWidth - 20);
+            
+            ctx.font = '12px Arial, sans-serif';
+            ctx.fillStyle = '#D1D5DB';
+            ctx.textAlign = 'right';
+            ctx.fillText('📦 Archivio', finalCanvas.width - padding, finalCanvas.height - padding);
+            
+            document.body.removeChild(tempDiv);
+            
+            return finalCanvas;
+        }
+
+        // Crea etichetta con entrambi i QR code
+        async function createLabelWithBothQR() {
+            const simpleCanvas = document.querySelector('#modal-qr-container canvas');
+            
+            // Genera QR code con URL
+            const tempDiv = document.createElement('div');
+            tempDiv.style.display = 'none';
+            tempDiv.id = 'temp-qr-url';
+            document.body.appendChild(tempDiv);
+            
+            const boxInfo = encodeURIComponent(JSON.stringify({
+                id: currentBox.id,
+                name: currentBox.name,
+                description: currentBox.description
+            }));
+            const qrUrl = `${window.location.origin}${window.location.pathname}?box=${boxInfo}`;
+            
+            new QRCode(tempDiv, {
+                text: qrUrl,
+                width: 160,
+                height: 160,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+            
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            const urlCanvas = tempDiv.querySelector('canvas');
+            const finalCanvas = document.createElement('canvas');
+            const ctx = finalCanvas.getContext('2d');
+            
+            const qrSize = 160;
+            const padding = 15;
+            const gap = 10;
+            const textWidth = 280;
+            finalCanvas.width = (qrSize * 2) + textWidth + (padding * 4) + gap;
+            finalCanvas.height = qrSize + (padding * 2);
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+            
+            // QR semplice a sinistra
+            ctx.drawImage(simpleCanvas, padding, padding, qrSize, qrSize);
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(padding, padding, qrSize, qrSize);
+            
+            // Label sotto QR semplice
+            ctx.fillStyle = '#9CA3AF';
+            ctx.font = '10px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('QR Semplice', padding + qrSize/2, finalCanvas.height - 5);
+            
+            // QR URL al centro
+            ctx.drawImage(urlCanvas, padding + qrSize + gap, padding, qrSize, qrSize);
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(padding + qrSize + gap, padding, qrSize, qrSize);
+            
+            // Label sotto QR URL
+            ctx.fillStyle = '#9CA3AF';
+            ctx.font = '10px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('QR URL', padding + qrSize + gap + qrSize/2, finalCanvas.height - 5);
+            
+            // Testo a destra
+            const textStartX = (qrSize * 2) + (padding * 2) + gap + 10;
+            drawBoxText(ctx, textStartX, finalCanvas.height / 2, textWidth - 20);
+            
+            ctx.font = '10px Arial, sans-serif';
+            ctx.fillStyle = '#D1D5DB';
+            ctx.textAlign = 'right';
+            ctx.fillText('📦', finalCanvas.width - padding, finalCanvas.height - 5);
+            
+            document.body.removeChild(tempDiv);
+            
+            return finalCanvas;
+        }
+
+        // Funzione helper per disegnare il testo del box
+        function drawBoxText(ctx, textStartX, textCenterY, maxWidth) {
             ctx.fillStyle = '#1F2937';
             ctx.font = 'bold 32px Arial, sans-serif';
             ctx.textAlign = 'left';
@@ -1171,10 +1235,8 @@
             let yPosition = textCenterY - 40;
             
             let boxName = currentBox.name;
-            const nameMaxWidth = textWidth - 20;
-            
-            if (ctx.measureText(boxName).width > nameMaxWidth) {
-                while (ctx.measureText(boxName + '...').width > nameMaxWidth && boxName.length > 0) {
+            if (ctx.measureText(boxName).width > maxWidth) {
+                while (ctx.measureText(boxName + '...').width > maxWidth && boxName.length > 0) {
                     boxName = boxName.slice(0, -1);
                 }
                 boxName += '...';
@@ -1182,15 +1244,13 @@
             
             ctx.fillText(boxName, textStartX, yPosition);
             
-            // Linea separatrice
             ctx.strokeStyle = '#E5E7EB';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(textStartX, yPosition + 10);
-            ctx.lineTo(textStartX + nameMaxWidth, yPosition + 10);
+            ctx.lineTo(textStartX + maxWidth, yPosition + 10);
             ctx.stroke();
             
-            // Descrizione
             if (currentBox.description) {
                 ctx.font = '18px Arial, sans-serif';
                 ctx.fillStyle = '#6B7280';
@@ -1202,7 +1262,7 @@
                 
                 for (let word of words) {
                     const testLine = line + word + ' ';
-                    if (ctx.measureText(testLine).width > nameMaxWidth) {
+                    if (ctx.measureText(testLine).width > maxWidth) {
                         if (line) lines.push(line.trim());
                         line = word + ' ';
                     } else {
@@ -1220,14 +1280,31 @@
                     yPosition += 24;
                 }
             }
-            
-            // Footer
-            ctx.font = '12px Arial, sans-serif';
-            ctx.fillStyle = '#D1D5DB';
-            ctx.textAlign = 'right';
-            ctx.fillText('📦 Archivio', finalCanvas.width - padding, finalCanvas.height - padding);
+        }
 
-            // Scarica
+        // Scarica QR code con informazioni
+        function downloadQRCodeWithInfo(canvas) {
+            const url = canvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `etichetta_${currentBox.name.replace(/[^a-z0-9]/gi, '_')}.png`;
+            a.click();
+        }
+
+        // Scarica QR code
+        async function downloadQRCode() {
+            const qrType = document.querySelector('input[name="qr-type"]:checked').value;
+            
+            let finalCanvas;
+            
+            if (qrType === 'simple') {
+                finalCanvas = await createLabelWithSimpleQR();
+            } else if (qrType === 'url') {
+                finalCanvas = await createLabelWithURLQR();
+            } else if (qrType === 'both') {
+                finalCanvas = await createLabelWithBothQR();
+            }
+
             const url = finalCanvas.toDataURL('image/png');
             const a = document.createElement('a');
             a.href = url;
@@ -1457,8 +1534,26 @@
                 { facingMode: "environment" },
                 config,
                 (decodedText) => {
-                    // Cerca il box tramite ID
-                    const boxToFind = boxes.find(b => b.id === decodedText);
+                    // Cerca il box tramite ID o URL
+                    let boxToFind = null;
+                    
+                    // Verifica se è un URL
+                    if (decodedText.includes('?box=')) {
+                        try {
+                            const url = new URL(decodedText);
+                            const boxParam = url.searchParams.get('box');
+                            if (boxParam) {
+                                const boxInfo = JSON.parse(decodeURIComponent(boxParam));
+                                boxToFind = boxes.find(b => b.id === boxInfo.id);
+                            }
+                        } catch (e) {
+                            // Non è un URL valido, prova come ID semplice
+                            boxToFind = boxes.find(b => b.id === decodedText);
+                        }
+                    } else {
+                        // È un ID semplice
+                        boxToFind = boxes.find(b => b.id === decodedText);
+                    }
                     
                     if (boxToFind) {
                         // Ferma lo scanner prima di procedere
