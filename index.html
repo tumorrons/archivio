@@ -728,7 +728,34 @@
             <div id="modal-items-list" class="item-list"></div>
 
             <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="editBox()">✏️ Modifica Box</button>
                 <button class="btn btn-danger" onclick="deleteBox()">🔄 Elimina Box</button>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- Modal per modificare Box -->
+    <div id="edit-box-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✏️ Modifica Box</h2>
+                <button class="close-btn" onclick="closeModal('edit-box-modal')">&times;</button>
+            </div>
+            
+            <div class="form-group">
+                <label for="edit-box-name">Nome del Box</label>
+                <input type="text" id="edit-box-name" placeholder="es. Scatola Garage A1">
+            </div>
+
+            <div class="form-group">
+                <label for="edit-box-description">Descrizione / Posizione</label>
+                <textarea id="edit-box-description" placeholder="es. Scatola nel garage, scaffale superiore a sinistra"></textarea>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn" onclick="saveBoxEdit()">💾 Salva Modifiche</button>
+                <button class="btn btn-secondary" onclick="closeModal('edit-box-modal')">❌ Annulla</button>
             </div>
         </div>
     </div>
@@ -1019,6 +1046,43 @@
             document.getElementById('box-modal').classList.add('active');
         }
 
+        // Assicura che il QR code sia generato (helper per condivisione/download)
+        async function ensureQRGenerated() {
+            const qrContainer = document.getElementById('modal-qr-container');
+            const existingCanvas = qrContainer.querySelector('canvas');
+            
+            // Se il QR esiste già, non fare nulla
+            if (existingCanvas) {
+                return;
+            }
+            
+            // Genera il QR temporaneamente (senza mostrarlo)
+            if (currentBox.isExisting) {
+                qrContainer.innerHTML = `
+                    <div style="text-align: center; padding: 20px; background: #F3F4F6; border-radius: 8px; margin-bottom: 15px;">
+                        <p style="color: #10B981; font-weight: 600; margin-bottom: 10px;">✓ QR Code Esistente Associato</p>
+                        <p style="color: #666; font-size: 14px;">Codice: ${currentBox.id}</p>
+                    </div>
+                    <div id="qrcode"></div>
+                `;
+            } else {
+                qrContainer.innerHTML = '<div id="qrcode"></div>';
+            }
+            
+            // Genera il QR code
+            new QRCode(document.getElementById("qrcode"), {
+                text: currentBox.id,
+                width: 256,
+                height: 256,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+            
+            // Aspetta un attimo che il QR sia renderizzato
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
         // Mostra/Genera QR code quando richiesto
         function showQRCode() {
             const qrContainer = document.getElementById('modal-qr-container');
@@ -1094,7 +1158,15 @@
 
         // Crea etichetta con QR semplice (solo ID)
         async function createLabelWithSimpleQR() {
+            // Assicurati che il QR sia generato
+            await ensureQRGenerated();
+            
             const canvas = document.querySelector('#modal-qr-container canvas');
+            if (!canvas) {
+                alert('Errore nella generazione del QR code. Riprova.');
+                return null;
+            }
+            
             const finalCanvas = document.createElement('canvas');
             const ctx = finalCanvas.getContext('2d');
             
@@ -1183,7 +1255,14 @@
 
         // Crea etichetta con entrambi i QR code
         async function createLabelWithBothQR() {
+            // Assicurati che il QR semplice sia generato
+            await ensureQRGenerated();
+            
             const simpleCanvas = document.querySelector('#modal-qr-container canvas');
+            if (!simpleCanvas) {
+                alert('Errore nella generazione del QR code. Riprova.');
+                return null;
+            }
             
             // Genera QR code con URL
             const tempDiv = document.createElement('div');
@@ -1905,6 +1984,53 @@
             closeModal('box-modal');
             
             alert('Box eliminato con successo!');
+        }
+
+        // Apri modal modifica box
+        function editBox() {
+            if (!currentBox) return;
+            
+            // Popola i campi del form con i dati attuali
+            document.getElementById('edit-box-name').value = currentBox.name;
+            document.getElementById('edit-box-description').value = currentBox.description || '';
+            
+            // Chiudi il modal del box e apri quello di modifica
+            closeModal('box-modal');
+            document.getElementById('edit-box-modal').classList.add('active');
+        }
+
+        // Salva modifiche box
+        function saveBoxEdit() {
+            const newName = document.getElementById('edit-box-name').value.trim();
+            const newDescription = document.getElementById('edit-box-description').value.trim();
+            
+            if (!newName) {
+                alert('Inserisci un nome per il box');
+                return;
+            }
+            
+            // Trova e aggiorna il box
+            const boxIndex = boxes.findIndex(b => b.id === currentBox.id);
+            if (boxIndex !== -1) {
+                boxes[boxIndex].name = newName;
+                boxes[boxIndex].description = newDescription;
+                
+                localStorage.setItem('boxes', JSON.stringify(boxes));
+                
+                // Aggiorna currentBox
+                currentBox.name = newName;
+                currentBox.description = newDescription;
+                
+                updateStats();
+                displayBoxes();
+                updateBoxSelect();
+                
+                closeModal('edit-box-modal');
+                alert('✓ Box modificato con successo!');
+                
+                // Riapri il modal del box con i dati aggiornati
+                showBoxModal(currentBox);
+            }
         }
 
         // Elimina oggetto
