@@ -472,7 +472,7 @@
     <div class="container">
         <div class="nav-tabs">
             <button class="nav-tab active" onclick="showTab('home')">
-                <span class="tab-icon">🏠</span>
+                <span class="tab-icon">🏠 </span>
                 <span>Home</span>
             </button>
             <button class="nav-tab" onclick="showTab('create-box')">
@@ -579,6 +579,9 @@
                         </label>
                     </div>
                     <img id="photo-preview" class="photo-preview" style="display: none;">
+                    <p style="font-size: 12px; color: #666; margin-top: 8px;">
+                        ℹ️ Le foto vengono automaticamente compresse per risparmiare spazio
+                    </p>
                 </div>
 
                 <div class="form-group">
@@ -632,37 +635,51 @@
                     </p>
                 </div>
 
-                <h3 style="color: #333; margin-bottom: 15px;">📤 Esporta Backup</h3>
+                <h3 style="color: #333; margin-bottom: 15px;">🗑️ Esporta Backup</h3>
                 <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Scarica tutti i tuoi dati (box, oggetti e foto) in un file JSON</p>
-                <button class="btn" onclick="exportBackup()">📥 Scarica Backup</button>
+                <button class="btn" onclick="exportBackup()">📷 Scarica Backup</button>
 
                 <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
 
-                <h3 style="color: #333; margin-bottom: 15px;">📥 Importa Backup</h3>
+                <h3 style="color: #333; margin-bottom: 15px;">📷 Importa Backup</h3>
                 <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Ripristina i dati da un file di backup precedente</p>
                 
                 <div class="file-input-wrapper">
                     <input type="file" id="backup-file" accept=".json" onchange="importBackup(this)">
                     <label for="backup-file" class="file-input-label">
-                        📂 Seleziona File Backup (.json)
+                        📤 Seleziona File Backup (.json)
                     </label>
                 </div>
 
                 <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
 
-                <h3 style="color: #333; margin-bottom: 15px;">🔄 Condividi Dati</h3>
+                <h3 style="color: #333; margin-bottom: 15px;">📥 Condividi Dati</h3>
                 <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Condividi il backup su altri dispositivi o servizi cloud</p>
-                <button class="btn btn-secondary" onclick="shareBackup()">📤 Condividi Backup</button>
+                <button class="btn btn-secondary" onclick="shareBackup()">🗑️ Condividi Backup</button>
 
                 <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
 
-                <h3 style="color: #EF4444; margin-bottom: 15px;">⚠️ Cancella Tutti i Dati</h3>
-                <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Elimina permanentemente tutti i box e oggetti. <strong>Questa azione non può essere annullata!</strong></p>
-                <button class="btn btn-danger" onclick="deleteAllData()">🗑️ Cancella Tutto</button>
+                <h3 style="color: #EF4444; margin-bottom: 15px;">⚠️ ï¸ Cancella Tutti i Dati</h3>
+                <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Elimina permanentemente tutti i box e oggetti. <strong>Questa azione non puÃ² essere annullata!</strong></p>
+                <button class="btn btn-danger" onclick="deleteAllData()">🔄 Cancella Tutto</button>
             </div>
 
             <div class="card">
                 <h3 style="color: #333; margin-bottom: 15px;">📊 Informazioni Archivio</h3>
+                
+                <!-- Avviso spazio quasi pieno (verrà mostrato dinamicamente) -->
+                <div id="storage-warning" style="display: none; background: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <p style="color: #92400E; font-size: 14px; margin: 0;">
+                        <strong>⚠️ Attenzione:</strong> Lo spazio di archiviazione è quasi pieno. Considera di creare un backup e eliminare oggetti o foto non necessari.
+                    </p>
+                </div>
+                
+                <div id="storage-critical" style="display: none; background: #FEE2E2; border-left: 4px solid #EF4444; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <p style="color: #991B1B; font-size: 14px; margin: 0;">
+                        <strong>🚨 Critico:</strong> Lo spazio di archiviazione è quasi esaurito! Crea urgentemente un backup ed elimina contenuti per liberare spazio.
+                    </p>
+                </div>
+                
                 <div style="background: #F9FAFB; padding: 15px; border-radius: 8px;">
                     <p style="margin-bottom: 8px; color: #666;"><strong>Box totali:</strong> <span id="backup-box-count">0</span></p>
                     <p style="margin-bottom: 8px; color: #666;"><strong>Oggetti totali:</strong> <span id="backup-item-count">0</span></p>
@@ -682,34 +699,36 @@
             </div>
             <p id="modal-box-description" style="color: #666; margin-bottom: 20px;"></p>
             
-            <div class="qr-preview" id="modal-qr-container"></div>
+            <button class="btn" onclick="showQRCode()" style="margin-bottom: 20px;">📱 Mostra QR Code per Stampa</button>
+            
+            <div class="qr-preview" id="modal-qr-container" style="display: none;"></div>
             
             <div style="background: #F3F4F6; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #333;">Tipo QR Code da stampare:</label>
                 <div style="display: flex; flex-direction: column; gap: 8px;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                         <input type="radio" name="qr-type" value="simple" checked>
-                        <span style="color: #666; font-size: 14px;">📱 Semplice (ID) - Migliore per stampanti termiche</span>
+                        <span style="color: #666; font-size: 14px;">📂 Semplice (ID) - Migliore per stampanti termiche</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                         <input type="radio" name="qr-type" value="url">
-                        <span style="color: #666; font-size: 14px;">🌐 URL Completo - Leggibile anche senza app</span>
+                        <span style="color: #666; font-size: 14px;">🌐 URL Completo - Leggibile anche senza app</span>
                     </label>
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                         <input type="radio" name="qr-type" value="both">
-                        <span style="color: #666; font-size: 14px;">🔄 Entrambi - Due QR code sull'etichetta</span>
+                        <span style="color: #666; font-size: 14px;">📥 Entrambi - Due QR code sull'etichetta</span>
                     </label>
                 </div>
             </div>
             
-            <button class="btn" onclick="shareQRCode()">🖨️ Condividi per Stampare</button>
+            <button class="btn" onclick="shareQRCode()">🖨️ Condividi per Stampare</button>
             <button class="btn btn-secondary" onclick="downloadQRCode()">💾 Scarica QR Code</button>
             
             <h3 style="margin-top: 30px; margin-bottom: 15px; color: #333;">Oggetti in questo Box</h3>
             <div id="modal-items-list" class="item-list"></div>
 
             <div class="action-buttons">
-                <button class="btn btn-danger" onclick="deleteBox()">🗑️ Elimina Box</button>
+                <button class="btn btn-danger" onclick="deleteBox()">🔄 Elimina Box</button>
             </div>
         </div>
     </div>
@@ -727,7 +746,7 @@
             <p id="modal-item-box" style="color: #4F46E5; font-weight: 600;"></p>
 
             <div class="action-buttons">
-                <button class="btn btn-danger" onclick="deleteItem()">🗑️ Elimina Oggetto</button>
+                <button class="btn btn-danger" onclick="deleteItem()">🔄 Elimina Oggetto</button>
             </div>
         </div>
     </div>
@@ -878,11 +897,11 @@
                     tempScanner.stop().then(() => {
                         document.body.removeChild(modalScanner);
                         document.getElementById('existing-qr-code').value = decodedText;
-                        alert('✓ QR Code scansionato e inserito!');
+                        alert('📊 QR Code scansionato e inserito!');
                     }).catch(err => {
                         document.body.removeChild(modalScanner);
                         document.getElementById('existing-qr-code').value = decodedText;
-                        alert('✓ QR Code scansionato e inserito!');
+                        alert('📊 QR Code scansionato e inserito!');
                     });
                 },
                 (errorMessage) => {
@@ -910,7 +929,7 @@
                     html5QrCode.scanFile(file, true)
                         .then(decodedText => {
                             document.getElementById('existing-qr-code').value = decodedText;
-                            alert('✓ QR Code scansionato e inserito!');
+                            alert('📊 QR Code scansionato e inserito!');
                             document.body.removeChild(fallbackDiv);
                         })
                         .catch(err => {
@@ -944,10 +963,10 @@
                     return;
                 }
                 
-                // Verifica che il codice non sia già usato
+                // Verifica che il codice non sia giÃ  usato
                 const existingBox = boxes.find(b => b.id === existingCode);
                 if (existingBox) {
-                    alert(`Questo QR code è già associato al box "${existingBox.name}". Usa un altro codice.`);
+                    alert(`Questo QR code Ã¨ giÃ  associato al box "${existingBox.name}". Usa un altro codice.`);
                     return;
                 }
                 
@@ -989,14 +1008,35 @@
             document.getElementById('modal-box-name').textContent = box.name;
             document.getElementById('modal-box-description').textContent = box.description || 'Nessuna descrizione';
 
-            // Genera QR code semplice con solo l'ID (più facile da stampare)
+            // Nascondi il QR code inizialmente
+            const qrContainer = document.getElementById('modal-qr-container');
+            qrContainer.style.display = 'none';
+            qrContainer.innerHTML = '';
+
+            // Mostra oggetti nel box
+            displayBoxItems(box.id);
+
+            document.getElementById('box-modal').classList.add('active');
+        }
+
+        // Mostra/Genera QR code quando richiesto
+        function showQRCode() {
             const qrContainer = document.getElementById('modal-qr-container');
             
-            if (box.isExisting) {
+            // Se è già visibile, nascondilo
+            if (qrContainer.style.display === 'block') {
+                qrContainer.style.display = 'none';
+                return;
+            }
+
+            // Mostra e genera il QR code
+            qrContainer.style.display = 'block';
+            
+            if (currentBox.isExisting) {
                 qrContainer.innerHTML = `
                     <div style="text-align: center; padding: 20px; background: #F3F4F6; border-radius: 8px; margin-bottom: 15px;">
                         <p style="color: #10B981; font-weight: 600; margin-bottom: 10px;">✓ QR Code Esistente Associato</p>
-                        <p style="color: #666; font-size: 14px;">Codice: ${box.id}</p>
+                        <p style="color: #666; font-size: 14px;">Codice: ${currentBox.id}</p>
                     </div>
                     <div id="qrcode"></div>
                 `;
@@ -1006,18 +1046,13 @@
             
             // QR code semplice con solo l'ID per stampa termica
             new QRCode(document.getElementById("qrcode"), {
-                text: box.id,
+                text: currentBox.id,
                 width: 256,
                 height: 256,
                 colorDark: "#000000",
                 colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.M  // Livello medio, più semplice da stampare
             });
-
-            // Mostra oggetti nel box
-            displayBoxItems(box.id);
-
-            document.getElementById('box-modal').classList.add('active');
         }
 
         // Condividi QR code per stampare
@@ -1199,7 +1234,7 @@
             ctx.fillStyle = '#4F46E5';
             ctx.font = 'bold 12px Arial, sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('🌐 QR Completo', padding + qrLargeSize/2, padding + qrLargeSize + 15);
+            ctx.fillText('🌐 QR Completo', padding + qrLargeSize/2, padding + qrLargeSize + 15);
             
             // Testo a destra
             const textStartX = qrLargeSize + (padding * 2);
@@ -1312,20 +1347,65 @@
         }
 
         // Preview foto
-        function previewPhoto(input) {
+        async function previewPhoto(input) {
             const preview = document.getElementById('photo-preview');
             if (input.files && input.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    preview.src = e.target.result;
+                try {
+                    // Comprimi e mostra preview
+                    const compressed = await compressImage(input.files[0]);
+                    preview.src = compressed;
                     preview.style.display = 'block';
-                };
-                reader.readAsDataURL(input.files[0]);
+                } catch (error) {
+                    console.error('Errore preview:', error);
+                    // Fallback: mostra immagine originale
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        preview.src = e.target.result;
+                        preview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(input.files[0]);
+                }
             }
         }
 
+        // Comprimi immagine per risparmiare spazio
+        function compressImage(file, maxWidth = 800, quality = 0.7) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        // Calcola nuove dimensioni mantenendo le proporzioni
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > maxWidth) {
+                            height = (height * maxWidth) / width;
+                            width = maxWidth;
+                        }
+                        
+                        // Crea canvas per la compressione
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Converti in base64 compresso
+                        const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
+                        resolve(compressedDataUrl);
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
         // Salva oggetto
-        function saveItem() {
+        async function saveItem() {
             const name = document.getElementById('item-name').value.trim();
             const description = document.getElementById('item-description').value.trim();
             const boxId = document.getElementById('item-box').value;
@@ -1343,19 +1423,32 @@
 
             let photoData = null;
             if (photoInput.files && photoInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
+                try {
+                    // Comprimi l'immagine prima di salvarla
+                    photoData = await compressImage(photoInput.files[0]);
+                    
                     const item = {
                         id: 'item_' + Date.now(),
                         name: name,
                         description: description,
                         boxId: boxId,
-                        photo: e.target.result,
+                        photo: photoData,
                         createdAt: new Date().toISOString()
                     };
 
                     items.push(item);
-                    localStorage.setItem('items', JSON.stringify(items));
+                    
+                    try {
+                        localStorage.setItem('items', JSON.stringify(items));
+                    } catch (e) {
+                        if (e.name === 'QuotaExceededError') {
+                            // Rimuovi l'item appena aggiunto
+                            items.pop();
+                            alert('⚠️ Spazio di archiviazione esaurito!\n\nLe foto occupano troppo spazio. Opzioni:\n1. Elimina alcune foto vecchie\n2. Crea un backup e ricomincia\n3. Aggiungi questo oggetto senza foto');
+                            return;
+                        }
+                        throw e;
+                    }
 
                     // Reset form
                     document.getElementById('item-name').value = '';
@@ -1365,11 +1458,13 @@
                     document.getElementById('photo-preview').style.display = 'none';
 
                     updateStats();
-                    alert('Oggetto salvato con successo!');
+                    alert('✓ Oggetto salvato con successo!');
                     showTab('search');
                     displayAllItems();
-                };
-                reader.readAsDataURL(photoInput.files[0]);
+                } catch (error) {
+                    console.error('Errore compressione immagine:', error);
+                    alert('Errore nel salvare la foto. Riprova.');
+                }
             } else {
                 const item = {
                     id: 'item_' + Date.now(),
@@ -1442,11 +1537,11 @@
                         tempScanner.stop().then(() => {
                             document.body.removeChild(modalScanner);
                             document.getElementById('item-box').value = box.id;
-                            alert(`✓ Box "${box.name}" selezionato!`);
+                            alert(`📊 Box "${box.name}" selezionato!`);
                         }).catch(err => {
                             document.body.removeChild(modalScanner);
                             document.getElementById('item-box').value = box.id;
-                            alert(`✓ Box "${box.name}" selezionato!`);
+                            alert(`📊 Box "${box.name}" selezionato!`);
                         });
                     } else {
                         // QR code non valido - mostra messaggio ma continua a scansionare
@@ -1455,7 +1550,7 @@
                             const errorMsg = document.createElement('div');
                             errorMsg.className = 'qr-error-message';
                             errorMsg.style.cssText = 'position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: #EF4444; color: white; padding: 12px 20px; border-radius: 8px; font-weight: 600; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
-                            errorMsg.textContent = '⚠️ QR Code non riconosciuto';
+                            errorMsg.textContent = '⚠️ ï¸ QR Code non riconosciuto';
                             scannerContainer.style.position = 'relative';
                             scannerContainer.appendChild(errorMsg);
                             
@@ -1536,7 +1631,7 @@
                     // Cerca il box tramite ID o URL
                     let boxToFind = null;
                     
-                    // Verifica se è un URL
+                    // Verifica se Ã¨ un URL
                     if (decodedText.includes('?box=')) {
                         try {
                             const url = new URL(decodedText);
@@ -1546,11 +1641,11 @@
                                 boxToFind = boxes.find(b => b.id === boxInfo.id);
                             }
                         } catch (e) {
-                            // Non è un URL valido, prova come ID semplice
+                            // Non Ã¨ un URL valido, prova come ID semplice
                             boxToFind = boxes.find(b => b.id === decodedText);
                         }
                     } else {
-                        // È un ID semplice
+                        // Ãˆ un ID semplice
                         boxToFind = boxes.find(b => b.id === decodedText);
                     }
                     
@@ -1573,7 +1668,7 @@
                             const errorMsg = document.createElement('div');
                             errorMsg.className = 'qr-error-message';
                             errorMsg.style.cssText = 'position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: #EF4444; color: white; padding: 12px 20px; border-radius: 8px; font-weight: 600; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
-                            errorMsg.textContent = '⚠️ QR Code non riconosciuto';
+                            errorMsg.textContent = '⚠️ ï¸ QR Code non riconosciuto';
                             qrReaderDiv.style.position = 'relative';
                             qrReaderDiv.appendChild(errorMsg);
                             
@@ -1594,11 +1689,11 @@
                 // Fallback: usa il metodo con scatto foto
                 qrReaderDiv.innerHTML = `
                     <div style="text-align: center; padding: 20px;">
-                        <p style="margin-bottom: 15px; color: #EF4444;">⚠️ Scanner video non disponibile</p>
+                        <p style="margin-bottom: 15px; color: #EF4444;">⚠️ ï¸ Scanner video non disponibile</p>
                         <p style="margin-bottom: 15px; color: #666; font-size: 14px;">Usa il metodo alternativo scattando una foto</p>
                         <input type="file" id="qr-file-input" accept="image/*" capture="environment" style="display: none;" onchange="scanQRFromFile(this)">
                         <label for="qr-file-input" class="btn" style="display: inline-block; cursor: pointer;">
-                            📷 Scatta Foto QR Code
+                            ✓ Scatta Foto QR Code
                         </label>
                         <div id="qr-scan-result" style="margin-top: 20px;"></div>
                     </div>
@@ -1629,21 +1724,21 @@
                 const html5QrCode = new Html5Qrcode("qr-scan-result");
                 html5QrCode.scanFile(file, true)
                     .then(decodedText => {
-                        // Verifica se è un box valido
+                        // Verifica se Ã¨ un box valido
                         const box = boxes.find(b => b.id === decodedText);
                         if (box) {
-                            resultDiv.innerHTML += `<p style="color: #10B981; font-weight: 600;">✓ Box trovato: ${box.name}</p>`;
+                            resultDiv.innerHTML += `<p style="color: #10B981; font-weight: 600;">📊 Box trovato: ${box.name}</p>`;
                             
                             setTimeout(() => {
                                 showBoxModal(box);
                             }, 1000);
                         } else {
-                            resultDiv.innerHTML += '<p style="color: #EF4444;">✗ QR Code non riconosciuto</p>';
+                            resultDiv.innerHTML += '<p style="color: #EF4444;">❌ QR Code non riconosciuto</p>';
                         }
                     })
                     .catch(err => {
                         console.error('Errore scansione QR:', err);
-                        resultDiv.innerHTML += '<p style="color: #EF4444;">✗ Impossibile leggere il QR code. Riprova con un\'immagine più nitida.</p>';
+                        resultDiv.innerHTML += '<p style="color: #EF4444;">❌ Impossibile leggere il QR code. Riprova con un\'immagine piÃ¹ nitida.</p>';
                     });
             };
             reader.readAsDataURL(file);
@@ -1858,8 +1953,44 @@
             
             // Calcola dimensione approssimativa
             const dataStr = JSON.stringify({boxes, items});
-            const sizeKB = (new Blob([dataStr]).size / 1024).toFixed(2);
-            document.getElementById('backup-size').textContent = sizeKB + ' KB';
+            const sizeBytes = new Blob([dataStr]).size;
+            const sizeKB = (sizeBytes / 1024).toFixed(2);
+            const sizeMB = (sizeBytes / (1024 * 1024)).toFixed(2);
+            
+            // Limite tipico del localStorage: 5-10MB (usiamo 5MB come riferimento)
+            const maxBytes = 5 * 1024 * 1024;
+            const percentUsed = ((sizeBytes / maxBytes) * 100).toFixed(1);
+            
+            let sizeText = sizeKB + ' KB';
+            if (sizeBytes > 1024 * 1024) {
+                sizeText = sizeMB + ' MB';
+            }
+            
+            document.getElementById('backup-size').textContent = sizeText + ` (${percentUsed}% usato)`;
+            
+            // Gestisci avvisi
+            const warningDiv = document.getElementById('storage-warning');
+            const criticalDiv = document.getElementById('storage-critical');
+            
+            if (percentUsed >= 80) {
+                // Critico: > 80%
+                warningDiv.style.display = 'none';
+                criticalDiv.style.display = 'block';
+                document.getElementById('backup-size').style.color = '#EF4444';
+                document.getElementById('backup-size').style.fontWeight = 'bold';
+            } else if (percentUsed >= 60) {
+                // Avviso: 60-80%
+                warningDiv.style.display = 'block';
+                criticalDiv.style.display = 'none';
+                document.getElementById('backup-size').style.color = '#F59E0B';
+                document.getElementById('backup-size').style.fontWeight = 'bold';
+            } else {
+                // Ok: < 60%
+                warningDiv.style.display = 'none';
+                criticalDiv.style.display = 'none';
+                document.getElementById('backup-size').style.color = '#666';
+                document.getElementById('backup-size').style.fontWeight = 'normal';
+            }
         }
 
         // Esporta backup
@@ -1882,7 +2013,7 @@
             a.click();
             
             URL.revokeObjectURL(url);
-            alert('✓ Backup scaricato con successo!');
+            alert('📊 Backup scaricato con successo!');
         }
 
         // Importa backup
@@ -1898,7 +2029,7 @@
                     
                     // Validazione base
                     if (!backupData.boxes || !backupData.items) {
-                        alert('❌ File di backup non valido');
+                        alert('📱 File di backup non valido');
                         return;
                     }
 
@@ -1907,7 +2038,7 @@
                     const newData = backupData.boxes.length + backupData.items.length;
                     
                     const confirmMsg = currentData > 0 
-                        ? `Hai ${boxes.length} box e ${items.length} oggetti.\n\nIl backup contiene ${backupData.boxes.length} box e ${backupData.items.length} oggetti.\n\n⚠️ I dati attuali verranno SOSTITUITI. Continuare?`
+                        ? `Hai ${boxes.length} box e ${items.length} oggetti.\n\nIl backup contiene ${backupData.boxes.length} box e ${backupData.items.length} oggetti.\n\n⚠️ ï¸ I dati attuali verranno SOSTITUITI. Continuare?`
                         : `Il backup contiene ${backupData.boxes.length} box e ${backupData.items.length} oggetti.\n\nImportare questi dati?`;
                     
                     if (!confirm(confirmMsg)) {
@@ -1928,14 +2059,14 @@
                     updateBoxSelect();
                     updateBackupInfo();
 
-                    alert(`✓ Backup importato con successo!\n\n${boxes.length} box e ${items.length} oggetti ripristinati.`);
+                    alert(`📊 Backup importato con successo!\n\n${boxes.length} box e ${items.length} oggetti ripristinati.`);
                     
                     // Torna alla home
                     showTab('home');
                     
                 } catch (error) {
                     console.error('Errore importazione backup:', error);
-                    alert('❌ Errore durante l\'importazione del backup. Assicurati che il file sia valido.');
+                    alert('📱 Errore durante l\'importazione del backup. Assicurati che il file sia valido.');
                 }
                 
                 input.value = '';
@@ -1965,7 +2096,7 @@
                         title: 'Backup Archivio Personale',
                         text: `Backup del ${dateStr} - ${boxes.length} box, ${items.length} oggetti`
                     });
-                    alert('✓ Backup condiviso con successo!');
+                    alert('📊 Backup condiviso con successo!');
                 } catch (err) {
                     if (err.name !== 'AbortError') {
                         console.log('Condivisione annullata o fallita', err);
@@ -1974,7 +2105,7 @@
                     }
                 }
             } else {
-                alert('La condivisione non è supportata su questo dispositivo. Il backup verrà scaricato.');
+                alert('La condivisione non Ã¨ supportata su questo dispositivo. Il backup verrÃ  scaricato.');
                 exportBackup();
             }
         }
@@ -1986,7 +2117,7 @@
                 return;
             }
 
-            const confirmMsg = `⚠️ ATTENZIONE ⚠️\n\nStai per eliminare:\n- ${boxes.length} box\n- ${items.length} oggetti\n- Tutte le foto\n\nQuesta operazione è IRREVERSIBILE!\n\nDigita "CANCELLA" per confermare:`;
+            const confirmMsg = `⚠️ ï¸ ATTENZIONE ⚠️ ï¸\n\nStai per eliminare:\n- ${boxes.length} box\n- ${items.length} oggetti\n- Tutte le foto\n\nQuesta operazione Ã¨ IRREVERSIBILE!\n\nDigita "CANCELLA" per confermare:`;
             
             const userInput = prompt(confirmMsg);
             
@@ -2020,7 +2151,7 @@
                 updateBoxSelect();
                 updateBackupInfo();
 
-                alert('✓ Tutti i dati sono stati cancellati.\n\nUn backup automatico è stato salvato prima della cancellazione.');
+                alert('📊 Tutti i dati sono stati cancellati.\n\nUn backup automatico Ã¨ stato salvato prima della cancellazione.');
                 
                 showTab('home');
             } else if (userInput !== null) {
@@ -2045,7 +2176,7 @@
         });
 
         function showInstallBanner() {
-            // Controlla se il banner è già stato mostrato o se l'app è già installata
+            // Controlla se il banner Ã¨ giÃ  stato mostrato o se l'app Ã¨ giÃ  installata
             if (localStorage.getItem('installBannerDismissed') === 'true') return;
             if (window.matchMedia('(display-mode: standalone)').matches) return;
             
