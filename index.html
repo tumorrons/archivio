@@ -1171,7 +1171,7 @@
             const ctx = finalCanvas.getContext('2d');
             
             const qrSize = 200;
-            const padding = 20;
+            const padding = 15; // Ridotto per ottimizzare lo spazio
             const textWidth = 320;
             finalCanvas.width = qrSize + textWidth + (padding * 3);
             finalCanvas.height = qrSize + (padding * 2);
@@ -1227,7 +1227,7 @@
             const ctx = finalCanvas.getContext('2d');
             
             const qrSize = 200;
-            const padding = 20;
+            const padding = 15; // Ridotto per ottimizzare lo spazio
             const textWidth = 320;
             finalCanvas.width = qrSize + textWidth + (padding * 3);
             finalCanvas.height = qrSize + (padding * 2);
@@ -1294,9 +1294,9 @@
             
             // Dimensioni: QR grande a sinistra, testo al centro, QR piccolo in basso a destra
             const qrLargeSize = 200;
-            const qrSmallSize = 80;
-            const padding = 20;
-            const textWidth = 300;
+            const qrSmallSize = 75; // Ridotto per dare più spazio al testo
+            const padding = 15; // Ridotto per ottimizzare lo spazio
+            const textWidth = 315; // Aumentato per testi lunghi
             finalCanvas.width = qrLargeSize + textWidth + (padding * 3);
             finalCanvas.height = qrLargeSize + (padding * 2);
             
@@ -1317,7 +1317,7 @@
             
             // Testo a destra
             const textStartX = qrLargeSize + (padding * 2);
-            drawBoxText(ctx, textStartX, finalCanvas.height / 2, textWidth - qrSmallSize - 15);
+            drawBoxText(ctx, textStartX, finalCanvas.height / 2, textWidth - qrSmallSize - 10);
             
             // QR semplice piccolo in basso a destra
             const qrSmallX = finalCanvas.width - qrSmallSize - padding;
@@ -1341,23 +1341,74 @@
 
         // Funzione helper per disegnare il testo del box
         function drawBoxText(ctx, textStartX, textCenterY, maxWidth) {
-            ctx.fillStyle = '#1F2937';
-            ctx.font = 'bold 32px Arial, sans-serif';
             ctx.textAlign = 'left';
             
             let yPosition = textCenterY - 40;
             
+            // Determina la dimensione del font in base alla lunghezza del nome
+            let fontSize = 32;
             let boxName = currentBox.name;
+            
+            ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+            
+            // Se il testo è troppo lungo, riduci il font e vai a capo
             if (ctx.measureText(boxName).width > maxWidth) {
-                while (ctx.measureText(boxName + '...').width > maxWidth && boxName.length > 0) {
-                    boxName = boxName.slice(0, -1);
+                // Prova con font più piccolo
+                fontSize = 24;
+                ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+                
+                // Se ancora troppo lungo, spezza su più righe
+                if (ctx.measureText(boxName).width > maxWidth) {
+                    const words = boxName.split(' ');
+                    let lines = [];
+                    let currentLine = '';
+                    
+                    for (let word of words) {
+                        const testLine = currentLine + (currentLine ? ' ' : '') + word;
+                        if (ctx.measureText(testLine).width > maxWidth) {
+                            if (currentLine) {
+                                lines.push(currentLine);
+                                currentLine = word;
+                            } else {
+                                // Parola singola troppo lunga - tagliala
+                                while (ctx.measureText(word + '...').width > maxWidth && word.length > 0) {
+                                    word = word.slice(0, -1);
+                                }
+                                lines.push(word + '...');
+                                currentLine = '';
+                            }
+                        } else {
+                            currentLine = testLine;
+                        }
+                    }
+                    if (currentLine) lines.push(currentLine);
+                    
+                    // Disegna massimo 2 righe
+                    ctx.fillStyle = '#1F2937';
+                    if (lines.length > 2) {
+                        lines = lines.slice(0, 2);
+                        lines[1] = lines[1].substring(0, lines[1].length - 3) + '...';
+                    }
+                    
+                    for (let i = 0; i < lines.length; i++) {
+                        ctx.fillText(lines[i], textStartX, yPosition + (i * 28));
+                    }
+                    
+                    yPosition += (lines.length - 1) * 28 + 10;
+                } else {
+                    // Disegna una riga con font ridotto
+                    ctx.fillStyle = '#1F2937';
+                    ctx.fillText(boxName, textStartX, yPosition);
                 }
-                boxName += '...';
+            } else {
+                // Disegna normalmente con font grande
+                ctx.fillStyle = '#1F2937';
+                ctx.fillText(boxName, textStartX, yPosition);
             }
             
-            ctx.fillText(boxName, textStartX, yPosition);
-            
+            // Linea separatrice
             ctx.strokeStyle = '#E5E7EB';
+
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(textStartX, yPosition + 10);
