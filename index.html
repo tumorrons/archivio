@@ -665,6 +665,18 @@
             </div>
 
             <div class="card">
+                
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
+
+                <h3 style="color: #333; margin-bottom: 15px;">🐛 Debug QR Code Esistenti</h3>
+                <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Mostra i codici QR associati ai box per verificare problemi di scansione</p>
+                <button class="btn btn-secondary" onclick="showQRDebug()">🔍 Mostra ID dei Box</button>
+                <div id="qr-debug-results" style="margin-top: 15px; display: none;">
+                    <div style="background: #F9FAFB; padding: 15px; border-radius: 8px; max-height: 300px; overflow-y: auto;">
+                        <div id="qr-debug-list"></div>
+                    </div>
+                </div>
+
                 <h3 style="color: #333; margin-bottom: 15px;">📊 Informazioni Archivio</h3>
                 
                 <!-- Avviso spazio quasi pieno (verrà mostrato dinamicamente) -->
@@ -1674,6 +1686,7 @@
                             alert(`📊 Box "${box.name}" selezionato!`);
                         });
                     } else {
+                        console.log('❌ Box NON trovato per:', decodedText);
                         // QR code non valido - mostra messaggio ma continua a scansionare
                         const existingError = scannerContainer.querySelector('.qr-error-message');
                         if (!existingError) {
@@ -1758,6 +1771,11 @@
                 { facingMode: "environment" },
                 config,
                 (decodedText) => {
+                    
+                    // Log di debug per QR esistenti
+                    console.log('🔍 QR Scansionato:', decodedText);
+                    console.log('📦 Box disponibili:', boxes.map(b => ({ id: b.id, name: b.name })));
+                    
                     // Cerca il box tramite ID o URL
                     let boxToFind = null;
                     
@@ -1775,11 +1793,22 @@
                             boxToFind = boxes.find(b => b.id === decodedText);
                         }
                     } else {
-                        // Ãˆ un ID semplice
+                        // È un ID semplice - prova match esatto
                         boxToFind = boxes.find(b => b.id === decodedText);
+                        
+                        // Se non trovato, prova con normalizzazione (rimuovi spazi, ignora maiuscole)
+                        if (!boxToFind) {
+                            const normalizedDecoded = decodedText.trim().toLowerCase();
+                            boxToFind = boxes.find(b => b.id.trim().toLowerCase() === normalizedDecoded);
+                            
+                            if (boxToFind) {
+                                console.log('✓ Box trovato con normalizzazione:', boxToFind.name);
+                            }
+                        }
                     }
                     
                     if (boxToFind) {
+                        console.log('✓ Box trovato:', boxToFind.name);
                         // Ferma lo scanner prima di procedere
                         scanner.stop().then(() => {
                             scanner.clear();
@@ -1791,6 +1820,7 @@
                             showBoxModal(boxToFind);
                         });
                     } else {
+                        console.log('❌ Box NON trovato per:', decodedText);
                         // QR code non valido - mostra messaggio ma continua a scansionare
                         const qrReaderDiv = document.getElementById('qr-reader');
                         const existingError = qrReaderDiv.querySelector('.qr-error-message');
@@ -2128,6 +2158,57 @@
         });
 
         // ===== FUNZIONI BACKUP =====
+
+        // Mostra debug QR code per diagnostica
+        function showQRDebug() {
+            const debugResults = document.getElementById('qr-debug-results');
+            const debugList = document.getElementById('qr-debug-list');
+            
+            if (debugResults.style.display === 'block') {
+                debugResults.style.display = 'none';
+                return;
+            }
+            
+            if (boxes.length === 0) {
+                debugList.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">Nessun box creato</p>';
+            } else {
+                let html = '<div style="font-family: monospace; font-size: 12px;">';
+                html += '<div style="display: grid; gap: 10px;">';
+                
+                boxes.forEach((box, index) => {
+                    const itemCount = items.filter(i => i.boxId === box.id).length;
+                    html += `
+                        <div style="background: white; padding: 12px; border-radius: 6px; border: 1px solid #E5E7EB;">
+                            <div style="font-weight: bold; color: #4F46E5; margin-bottom: 5px;">
+                                ${index + 1}. ${box.name}
+                            </div>
+                            <div style="color: #666; margin-bottom: 3px;">
+                                <strong>ID:</strong> <code style="background: #FEF3C7; padding: 2px 6px; border-radius: 3px; color: #92400E;">${box.id}</code>
+                            </div>
+                            <div style="color: #666; margin-bottom: 3px;">
+                                <strong>Tipo:</strong> ${box.isExisting ? '🔗 QR Esistente' : '🆕 QR Generato'}
+                            </div>
+                            <div style="color: #666;">
+                                <strong>Oggetti:</strong> ${itemCount}
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                html += '<div style="margin-top: 15px; padding: 10px; background: #EFF6FF; border-radius: 6px; font-size: 11px; color: #1E40AF;">';
+                html += '<strong>💡 Come usare:</strong><br>';
+                html += '1. Verifica che l\'ID del box corrisponda al QR che stai scansionando<br>';
+                html += '2. L\'ID deve essere ESATTAMENTE uguale (maiuscole/minuscole contano)<br>';
+                html += '3. Se non funziona, apri la Console del browser (F12) per vedere i log di debug';
+                html += '</div>';
+                html += '</div>';
+                
+                debugList.innerHTML = html;
+            }
+            
+            debugResults.style.display = 'block';
+        }
 
         // Aggiorna informazioni backup
         function updateBackupInfo() {
