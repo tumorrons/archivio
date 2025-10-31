@@ -740,7 +740,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>✏️ Modifica Box</h2>
-                <button class="close-btn" onclick="closeModal('edit-box-modal')">&times;</button>
+                <button class="close-btn" onclick="cancelBoxEdit()">&times;</button>
             </div>
             
             <div class="form-group">
@@ -755,7 +755,7 @@
 
             <div class="action-buttons">
                 <button class="btn" onclick="saveBoxEdit()">💾 Salva Modifiche</button>
-                <button class="btn btn-secondary" onclick="closeModal('edit-box-modal')">❌ Annulla</button>
+                <button class="btn btn-secondary" onclick="cancelBoxEdit()">❌ Annulla</button>
             </div>
         </div>
     </div>
@@ -1994,8 +1994,9 @@
             document.getElementById('edit-box-name').value = currentBox.name;
             document.getElementById('edit-box-description').value = currentBox.description || '';
             
-            // Chiudi il modal del box e apri quello di modifica
-            closeModal('box-modal');
+            // Nascondi il modal del box (senza chiuderlo completamente per mantenere currentBox)
+            document.getElementById('box-modal').classList.remove('active');
+            // Apri quello di modifica
             document.getElementById('edit-box-modal').classList.add('active');
         }
 
@@ -2025,12 +2026,20 @@
                 displayBoxes();
                 updateBoxSelect();
                 
-                closeModal('edit-box-modal');
+                // Chiudi modal modifica e riapri quello del box
+                document.getElementById('edit-box-modal').classList.remove('active');
                 alert('✓ Box modificato con successo!');
                 
                 // Riapri il modal del box con i dati aggiornati
                 showBoxModal(currentBox);
             }
+        }
+
+        // Annulla modifica box
+        function cancelBoxEdit() {
+            // Chiudi modal modifica e riapri quello del box
+            document.getElementById('edit-box-modal').classList.remove('active');
+            document.getElementById('box-modal').classList.add('active');
         }
 
         // Elimina oggetto
