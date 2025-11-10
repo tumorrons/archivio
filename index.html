@@ -991,7 +991,7 @@
             });
             // Salva anche in localStorage come backup sincronamente
             try {
-                saveBoxesToDB();
+                localStorage.setItem('boxes', JSON.stringify(boxes));
             } catch (error) {
                 console.error('Errore salvataggio boxes su localStorage:', error);
             }
@@ -1004,7 +1004,7 @@
             });
             // Salva anche in localStorage come backup sincronamente
             try {
-                saveItemsToDB();
+                localStorage.setItem('items', JSON.stringify(items));
             } catch (error) {
                 console.error('Errore salvataggio items su localStorage:', error);
             }
