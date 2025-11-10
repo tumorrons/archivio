@@ -797,15 +797,140 @@
     </div>
 
     <script>
-        // Database locale usando localStorage
-        let boxes = JSON.parse(localStorage.getItem('boxes')) || [];
-        let items = JSON.parse(localStorage.getItem('items')) || [];
+        // ============================================
+        // IndexedDB Manager - Supporta migliaia di oggetti
+        // ============================================
+        class ArchivioDatabase {
+            constructor() {
+                this.db = null;
+                this.dbName = 'ArchivioPersonale';
+                this.version = 1;
+            }
+
+            async init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(this.dbName, this.version);
+
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                        this.db = request.result;
+                        resolve();
+                    };
+
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        // Crea object stores se non esistono
+                        if (!db.objectStoreNames.contains('boxes')) {
+                            const boxStore = db.createObjectStore('boxes', { keyPath: 'id' });
+                            boxStore.createIndex('name', 'name', { unique: false });
+                        }
+                        if (!db.objectStoreNames.contains('items')) {
+                            const itemStore = db.createObjectStore('items', { keyPath: 'id' });
+                            itemStore.createIndex('boxId', 'boxId', { unique: false });
+                            itemStore.createIndex('name', 'name', { unique: false });
+                        }
+                    };
+                });
+            }
+
+            async saveBoxes(boxes) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['boxes'], 'readwrite');
+                    const store = transaction.objectStore('boxes');
+                    store.clear();
+                    boxes.forEach(box => store.add(box));
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = () => reject(transaction.error);
+                });
+            }
+
+            async loadBoxes() {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['boxes'], 'readonly');
+                    const store = transaction.objectStore('boxes');
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async saveItems(items) {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['items'], 'readwrite');
+                    const store = transaction.objectStore('items');
+                    store.clear();
+                    items.forEach(item => store.add(item));
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = () => reject(transaction.error);
+                });
+            }
+
+            async loadItems() {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['items'], 'readonly');
+                    const store = transaction.objectStore('items');
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async migrateFromLocalStorage() {
+                const boxesLS = localStorage.getItem('boxes');
+                const itemsLS = localStorage.getItem('items');
+
+                if (boxesLS) {
+                    await this.saveBoxes(JSON.parse(boxesLS));
+                }
+                if (itemsLS) {
+                    await this.saveItems(JSON.parse(itemsLS));
+                }
+            }
+
+            async clear() {
+                return new Promise((resolve, reject) => {
+                    const transaction = this.db.transaction(['boxes', 'items'], 'readwrite');
+                    transaction.objectStore('boxes').clear();
+                    transaction.objectStore('items').clear();
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = () => reject(transaction.error);
+                });
+            }
+        }
+
+        // Database locale usando IndexedDB
+        const archivioDb = new ArchivioDatabase();
+        let boxes = [];
+        let items = [];
         let currentBox = null;
         let currentItem = null;
         let scanner = null;
 
         // Inizializzazione
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Inizializza IndexedDB
+                await archivioDb.init();
+
+                // Migra da localStorage se necessario
+                const boxesLS = localStorage.getItem('boxes');
+                if (boxesLS && boxesLS !== '[]') {
+                    console.log('Migrazione dati da localStorage a IndexedDB...');
+                    await archivioDb.migrateFromLocalStorage();
+                }
+
+                // Carica dati da IndexedDB
+                boxes = await archivioDb.loadBoxes();
+                items = await archivioDb.loadItems();
+
+                console.log(`Dati caricati: ${boxes.length} box, ${items.length} items`);
+            } catch (error) {
+                console.error('Errore IndexedDB:', error);
+                // Fallback a localStorage se IndexedDB non disponibile
+                boxes = JSON.parse(localStorage.getItem('boxes')) || [];
+                items = JSON.parse(localStorage.getItem('items')) || [];
+            }
+
             updateStats();
             displayBoxes();
             updateBoxSelect();
@@ -855,6 +980,49 @@
                 deferredPrompt = null;
             });
         });
+
+        // ============================================
+        // Funzioni wrapper per salvataggio IndexedDB
+        // ============================================
+        function saveBoxesToDB() {
+            // Fire and forget - salva in background
+            archivioDb.saveBoxes(boxes).catch(error => {
+                console.error('Errore salvataggio boxes su IndexedDB:', error);
+            });
+            // Salva anche in localStorage come backup sincronamente
+            try {
+                saveBoxesToDB();
+            } catch (error) {
+                console.error('Errore salvataggio boxes su localStorage:', error);
+            }
+        }
+
+        function saveItemsToDB() {
+            // Fire and forget - salva in background
+            archivioDb.saveItems(items).catch(error => {
+                console.error('Errore salvataggio items su IndexedDB:', error);
+            });
+            // Salva anche in localStorage come backup sincronamente
+            try {
+                saveItemsToDB();
+            } catch (error) {
+                console.error('Errore salvataggio items su localStorage:', error);
+            }
+        }
+
+        function clearAllData() {
+            // Cancella da IndexedDB (fire and forget)
+            archivioDb.clear().catch(error => {
+                console.error('Errore cancellazione IndexedDB:', error);
+            });
+            // Cancella da localStorage
+            try {
+                localStorage.removeItem('boxes');
+                localStorage.removeItem('items');
+            } catch (error) {
+                console.error('Errore cancellazione localStorage:', error);
+            }
+        }
 
         // Gestione tabs
         function showTab(tabName) {
@@ -1030,7 +1198,7 @@
             };
 
             boxes.push(box);
-            localStorage.setItem('boxes', JSON.stringify(boxes));
+            saveBoxesToDB();
 
             // Reset form
             document.getElementById('box-name').value = '';
@@ -1618,7 +1786,7 @@
             }
 
             try {
-                localStorage.setItem('items', JSON.stringify(items));
+                saveItemsToDB();
 
                 const newSize = calculatePhotosSize();
                 const saved = (originalSize.photosSize - newSize.photosSize) / 1024;
@@ -1678,7 +1846,7 @@
                     items.push(item);
                     
                     try {
-                        localStorage.setItem('items', JSON.stringify(items));
+                        saveItemsToDB();
                     } catch (e) {
                         if (e.name === 'QuotaExceededError') {
                             // Rimuovi l'item appena aggiunto
@@ -1728,7 +1896,7 @@
                 };
 
                 items.push(item);
-                localStorage.setItem('items', JSON.stringify(items));
+                saveItemsToDB();
 
                 // Reset form
                 document.getElementById('item-name').value = '';
@@ -2166,8 +2334,8 @@
             boxes = boxes.filter(b => b.id !== currentBox.id);
             items = items.filter(i => i.boxId !== currentBox.id);
             
-            localStorage.setItem('boxes', JSON.stringify(boxes));
-            localStorage.setItem('items', JSON.stringify(items));
+            saveBoxesToDB();
+            saveItemsToDB();
 
             updateStats();
             displayBoxes();
@@ -2207,7 +2375,7 @@
                 boxes[boxIndex].name = newName;
                 boxes[boxIndex].description = newDescription;
                 
-                localStorage.setItem('boxes', JSON.stringify(boxes));
+                saveBoxesToDB();
                 
                 // Aggiorna currentBox
                 currentBox.name = newName;
@@ -2242,7 +2410,7 @@
             }
 
             items = items.filter(i => i.id !== currentItem.id);
-            localStorage.setItem('items', JSON.stringify(items));
+            saveItemsToDB();
 
             updateStats();
             displayAllItems();
@@ -2433,8 +2601,8 @@
                     boxes = backupData.boxes;
                     items = backupData.items;
                     
-                    localStorage.setItem('boxes', JSON.stringify(boxes));
-                    localStorage.setItem('items', JSON.stringify(items));
+                    saveBoxesToDB();
+                    saveItemsToDB();
 
                     // Aggiorna interfaccia
                     updateStats();
@@ -2526,8 +2694,7 @@
                 // Cancella i dati
                 boxes = [];
                 items = [];
-                localStorage.removeItem('boxes');
-                localStorage.removeItem('items');
+                clearAllData();
 
                 updateStats();
                 displayBoxes();
